@@ -1,0 +1,18 @@
+{
+  "icon": {
+    "android": {
+      "offset": 0
+    }
+  },
+  "splash": {
+    "android": {
+      "backgroundColor": "#050e08"
+    }
+  },
+  "android": {
+    "iconBackgroundColor": "#050e08",
+    "iconBackgroundColorDark": "#050e08",
+    "splashBackgroundColor": "#050e08",
+    "splashBackgroundColorDark": "#050e08"
+  }
+}

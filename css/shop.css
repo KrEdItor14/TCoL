@@ -1,0 +1,2 @@
+/* Shop-specific styles */
+.shop-item{ display:flex; justify-content:space-between; align-items:stretch; border-bottom:1px dashed var(--line-soft); padding:8px 0; gap:8px; }

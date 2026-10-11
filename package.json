@@ -1,0 +1,40 @@
+{
+  "name": "the-creed-of-life",
+  "version": "3.7.4",
+  "private": true,
+  "description": "The Creed of Life — offline Android APK contour (Stage 2)",
+  "scripts": {
+    "prepare:web": "node scripts/copy-web.mjs",
+    "sync:bundles": "npm run prepare:web",
+    "cap:add:android": "npm run prepare:web && npx cap add android && npm run generate:assets",
+    "cap:sync": "npm run prepare:web && npx cap sync android",
+    "cap:open": "npx cap open android",
+    "cap:run": "npx cap run android",
+    "cap:build": "npm run prepare:web && npx cap sync android && cd android && gradlew.bat assembleDebug",
+    "test:storage": "node tests/storage-reliability.test.js",
+    "test:capacitor": "node tests/capacitor-bridge.test.js",
+    "test:mobile": "node tests/mobile-ux.test.js",
+    "test:offline": "node tests/offline-readiness.test.js",
+    "test:ai-quota": "node tests/ai-free-limit.test.js && node tests/ai-flow.test.js && node tests/ai-worker-quota.test.js",
+    "test:all": "node tests/storage-reliability.test.js && node tests/capacitor-bridge.test.js && node tests/mobile-ux.test.js && node tests/offline-readiness.test.js && npm run test:ai-quota",
+    "cap:build:unix": "npm run prepare:web && npx cap sync android && cd android && ./gradlew assembleDebug",
+    "generate:assets": "npx capacitor-assets generate --android",
+    "cap:assets": "npm run generate:assets && npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/app": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/filesystem": "^8.0.0",
+    "@capacitor/preferences": "^8.0.0",
+    "@capacitor/share": "^8.0.0",
+    "@capacitor/splash-screen": "^8.0.0",
+    "@capacitor/status-bar": "^8.0.0",
+    "@capacitor/local-notifications": "^8.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.0.0",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,646 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>The Creed of Life v3.7.4</title>
+<link rel="icon" type="image/jpeg" href="img/icon-192.jpg" />
+<link rel="apple-touch-icon" href="img/icon-192.jpg" />
+
+
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/shop.css">
+<link rel="stylesheet" href="css/mobile.css">
+</head>
+<body>
+<!-- Boot splash: terminal startup sequence -->
+<div id="bootSplash" class="boot-splash" aria-hidden="false" role="status" aria-label="Загрузка The Creed of Life">
+  <div class="boot-terminal">
+    <div class="boot-terminal-chrome">
+      <span class="boot-terminal-dot"></span>
+      <span class="boot-terminal-dot"></span>
+      <span class="boot-terminal-dot"></span>
+      <span class="boot-terminal-title">TCoL // SYSBOOT</span>
+    </div>
+    <div class="boot-terminal-screen" id="bootTerminalLog"></div>
+    <div class="boot-terminal-finale" id="bootTerminalFinale" hidden>
+      <div class="boot-init-done">Инициализация завершена</div>
+      <div class="boot-welcome">Добро пожаловать в</div>
+      <div class="boot-tcol-out" id="bootTcolOut"></div>
+    </div>
+  </div>
+</div>
+<div id="app">
+<div id="aiThinkingOverlay" class="ai-overlay" style="display:none;">
+<div class="ai-overlay-card">
+<div class="ai-spinner"></div>
+<div id="aiThinkingText">🤖 AI думает...</div>
+<div class="ai-overlay-sub">Прошло: <span id="aiThinkingTimer">0 сек</span></div>
+<div class="actions" style="justify-content:center; margin-top:14px;">
+<button class="btn warn" id="aiThinkingCancelBtn">Отменить</button>
+</div>
+</div>
+</div>
+<div class="header">
+<div class="header-top">
+<div class="char-name" id="charName"></div>
+<div class="char-level" id="charLevel">УРОВЕНЬ 5</div>
+<div class="header-power" id="headerPower" aria-label="Мощь персонажа"><span class="header-power-label">⚔️ МОЩЬ</span><b class="header-power-value" id="headerPowerValue">0</b></div>
+</div>
+<div class="datetime" id="datetimeDisplay"></div>
+<div class="xp-row">
+<span>XP</span>
+<div class="bar"><span id="xpBar" style="width:0%"></span></div>
+<span id="xpText">65/300</span>
+</div>
+<div class="stat-strip">
+<div>🪙 <b id="coinsTop">460</b></div>
+<div>⭐ очки SPECIAL: <b id="specialPointsTop">1</b></div>
+</div>
+<div id="activeBuffs" style="display:flex; gap:4px; flex-wrap:wrap;"></div>
+<div class="save-indicator" id="saveIndicator" aria-label="Состояние сохранения" title="Сохранение"></div>
+</div>
+<!-- Bottom navigation (Stage 2.2 mobile) -->
+<nav class="tabs-row bottom-nav" id="bottomNav" aria-label="Основная навигация">
+  <div class="tabs-viewport">
+    <div class="tabs" id="tabs"></div>
+  </div>
+</nav>
+<!-- ============ ВКЛАДКА: ГЛАВНАЯ ============ -->
+<section class="panel active" id="panel-char">
+  <div class="card">
+    <h3>📊 Сегодня</h3>
+    <div class="stats-today-grid">
+      <div class="stats-today-card"><div class="num" id="todayQuests">0</div><div class="label">✅ Квестов</div></div>
+      <div class="stats-today-card"><div class="num" id="todayCoins">0</div><div class="label">🪙 Монет</div></div>
+      <div class="stats-today-card"><div class="num" id="todayXP">0</div><div class="label">⭐ XP</div></div>
+      <div class="stats-today-card"><div class="num" id="todayActivity">0 мин</div><div class="label">⏱️ Время активности</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>👹 Активный босс</h3>
+    <div id="dashBoss"></div>
+  </div>
+  <div class="card">
+    <h3>🟢 Активный рейд</h3>
+    <div id="dashRaid"></div>
+  </div>
+  <div class="card">
+    <h3>🟠 Запланированные квесты</h3>
+    <div id="dashPlanned"></div>
+  </div>
+  <div class="card">
+    <h3>🟡 Активные квесты</h3>
+    <div id="dashActive"></div>
+  </div>
+</section>
+
+<!-- ============ ВКЛАДКА: ПЕРКИ ============ -->
+<section class="panel" id="panel-perks">
+  <div class="card">
+    <h3>⭐ Перки <button class="btn ai" id="aiGeneratePerkBtn" style="font-size:10px;">✨ AI: сгенерировать перк</button></h3>
+    <div class="sub">Очков перков: <span id="perkPointsSub">1</span> · генераций AI на этом уровне: <span id="perkGenCountSub">0</span>/3</div>
+    <hr class="rule">
+    <div class="sub">Доступно для покупки</div>
+    <div id="availablePerks"></div>
+  </div>
+  <div class="card">
+    <h3>🔓 Разблокированные</h3>
+    <div id="unlockedPerks"></div>
+  </div>
+</section>
+
+<!-- ============ ВКЛАДКА: НАВЫКИ ============ -->
+<section class="panel" id="panel-skills">
+  <div class="card">
+    <h3>☢️ SPECIAL</h3>
+    <div class="special-grid" id="specialGrid"></div>
+  </div>
+  <div class="card">
+    <h3>🌳 НАВЫКИ</h3>
+    <div id="skillsList"></div>
+  </div>
+</section>
+
+<!-- ============ ВКЛАДКА: КВЕСТЫ ============ -->
+<section class="panel" id="panel-quests">
+  <div class="card">
+    <h3>🟢 Активный рейд</h3>
+    <div id="raidNotice" class="sub">Рейдов не активно.</div>
+    <div id="raidTimer" class="sub" style="color:var(--amber); margin-top:4px;"></div>
+  </div>
+  <div class="card">
+    <h3>🟠 Запланированные рейды <span class="muted" style="font-size:11px;">(<span id="countPlanned">0</span>)</span></h3>
+    <div class="sub" style="margin-bottom:8px;">Сюда попадают только рейды до старта. Обычные квесты сразу идут в активные.</div>
+    <div id="questsPlanned"></div>
+  </div>
+  <div class="card">
+    <h3>🟡 Активные <span class="muted" style="font-size:11px;">(<span id="countActive">0</span>)</span></h3>
+    <div id="questsActive"></div>
+  </div>
+  <div class="card">
+    <h3>📊 Статистика квестов</h3>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="num" id="statCompleted">0</div><div class="label">✅ Выполнено</div></div>
+      <div class="stat-card"><div class="num" id="statFailed">0</div><div class="label">❌ Провалено</div></div>
+      <div class="stat-card"><div class="num" id="statAborted">0</div><div class="label">⛔ Отменено</div></div>
+    </div>
+    <div id="questsDone"></div>
+  </div>
+  <div class="card">
+    <h3>➕ Новый квест <span class="ai-status" id="aiStatus">🤖 AI: проверка...</span></h3>
+    <div class="sub">Игрок описывает задачу объективными параметрами. Награду — XP, монеты, распределение по навыкам — назначает система, а не игрок.</div>
+    <label class="field">Название
+      <input id="qNewTitle" placeholder="напр. Разбор почты" />
+    </label>
+    <label class="field">Описание задачи
+      <textarea id="qNewDesc" rows="2" placeholder="что нужно сделать; по возможности — измеримые параметры (кол-во, объём, время)"></textarea>
+    </label>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <label class="field" style="flex:1; min-width:120px;">Тип
+        <select id="qNewType">
+          <option value="обычный">Обычный</option>
+          <option value="рейд">Рейд</option>
+        </select>
+      </label>
+      <label class="field" style="flex:1; min-width:120px;">Сложность
+        <select id="qNewDifficulty">
+          <option value="trivial">⚪ новичок</option>
+          <option value="easy">🟢 ученик</option>
+          <option value="normal" selected>🔵 адепт</option>
+          <option value="hard">🟣 эксперт</option>
+          <option value="epic">🟡 мастер</option>
+        </select>
+      </label>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <label class="field" style="flex:1; min-width:100px;">Оценка времени, мин
+        <input id="qNewMinutes" type="number" value="30" min="1" />
+      </label>
+      <label class="field" style="flex:1; min-width:100px;">Число этапов
+        <input id="qNewSteps" type="number" value="1" min="1" />
+      </label>
+    </div>
+    <div class="field">Задействованные навыки (выбери, сколько применимо)
+      <div id="qNewSkillsPick" class="skill-picker-grid"></div>
+    </div>
+    <div class="card" style="background:var(--bg); border-style:dashed; margin-top:4px;">
+      <div class="sub">Расчёт системы (предпросмотр, не редактируется)</div>
+      <div id="qNewPreview" style="margin-top:4px; font-size:11px; color:var(--amber);">—</div>
+    </div>
+    <div class="actions" id="qNewActions">
+      <button class="btn primary" id="qNewAddActive">В активные</button>
+      <button class="btn primary" id="qNewAddPlanned" style="display:none;">В запланированные рейды</button>
+      <button class="btn warn" id="qNewResetBtn">🔄 Сбросить параметры</button>
+    </div>
+    <div class="sub" id="qNewTypeHint">Обычный квест сразу становится активным.</div>
+  </div>
+  <div class="card">
+    <h3>✨ AI-квест</h3>
+    <label class="field">Тема (необязательно)
+      <input id="aiQuestTheme" placeholder="напр. «уборка гаража» (пусто = случайный)" />
+    </label>
+    <div class="actions">
+      <button class="btn ai" id="aiGenerateQuest">✨ Сгенерировать с AI</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ВКЛАДКА: БОССЫ ============ -->
+<section class="panel" id="panel-boss">
+  <div class="card">
+    <h3>👹 Боссы</h3>
+    <div id="bossList"></div>
+  </div>
+  <div class="card">
+    <h3>➕ Новый босс</h3>
+    <label class="field">Тип босса
+      <select id="bossNewType">
+        <option value="financial">💰 Финансовый (сумма ₽, 3 фазы: 20% / 30% / 50%)</option>
+        <option value="other">🎯 Другой (не про деньги — напр. выучить английский)</option>
+      </select>
+    </label>
+    <label class="field">Имя босса
+      <input id="bossNewName" placeholder="напр. Долговая яма" />
+    </label>
+    <label class="field">Цель
+      <input id="bossNewGoal" placeholder="напр. Погасить кредит" />
+    </label>
+    <label class="field" id="bossNewTargetLabel">Целевая сумма, ₽
+      <input id="bossNewTarget" type="number" placeholder="100000" />
+    </label>
+    <label class="field" id="bossNewUnitWrap" style="display:none;">Единица измерения прогресса
+      <input id="bossNewUnit" placeholder="напр. часы, уроки, %" />
+    </label>
+    <div class="actions">
+      <button class="btn primary" id="bossNewAdd">Добавить босса</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3>✨ AI-босс</h3>
+    <label class="field">Тема (необязательно)
+      <input id="aiBossTheme" placeholder="напр. «выучить английский» (пусто = случайный)" />
+    </label>
+    <div class="actions">
+      <button class="btn ai" id="aiGenerateBoss">✨ Сгенерировать с AI</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ВКЛАДКА: ЭКОНОМИКА ============ -->
+<section class="panel" id="panel-economy">
+  <div class="card">
+    <h3>🪙 Игровая валюта</h3>
+    <div class="sub">Текущий баланс: <b class="coin" id="coinsBig">460 🪙</b></div>
+    <div id="coinLog" style="margin-top:8px;"></div>
+  </div>
+  <div class="card">
+    <h3>🏪 Магазин</h3>
+    <div class="sub" id="shopStatus">Статус: активен</div>
+    <div id="shopList" style="margin-top:6px;"></div>
+    <hr class="rule">
+    <div class="sub">Добавить товар вручную</div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <label class="field" style="flex:2; min-width:120px;">Название
+        <input id="shopNewName" placeholder="Товар" />
+      </label>
+      <label class="field" style="flex:1; min-width:80px;">Цена 🪙
+        <input id="shopNewPrice" type="number" placeholder="100" />
+      </label>
+      <label class="field" style="flex:1; min-width:120px;">Редкость
+        <select id="shopNewRarity">
+          <option value="common">Обычная</option>
+          <option value="uncommon">Необычная</option>
+          <option value="rare">Редкая</option>
+          <option value="epic">Эпическая</option>
+          <option value="legendary">Легендарная</option>
+          <option value="unique">Уникальная</option>
+          <option value="mythical">Мифическая</option>
+        </select>
+      </label>
+      <label class="field" style="flex:2; min-width:180px;">Бафф
+        <input id="shopNewEffect" placeholder="Например: +5% к концентрации" />
+      </label>
+      <label class="field" style="flex:1; min-width:120px;">Длительность, мин
+        <input id="shopNewDuration" type="number" min="15" max="1440" step="1" placeholder="30" />
+      </label>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="shopNewAdd">Добавить</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3>✨ AI-товар</h3>
+    <label class="field">Тема (необязательно)
+      <input id="aiShopTheme" placeholder="напр. «напитки» (пусто = случайный)" />
+    </label>
+    <div class="actions">
+      <button class="btn ai" id="aiShopGenerateBtn">✨ Придумать товар с AI</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ВКЛАДКА: ИНВЕНТАРЬ ============ -->
+<section class="panel" id="panel-inventory">
+  <div class="card">
+    <h3>🎒 Инвентарь</h3>
+    <div class="inv-filters" id="invFilters">
+      <button class="btn active" data-filter="all">Всё</button>
+      <button class="btn" data-filter="equipment">Снаряжение</button>
+      <button class="btn" data-filter="consumable">Расходники</button>
+      <button class="btn" data-filter="material">Материалы</button>
+    </div>
+    <div id="inventoryList"></div>
+  </div>
+</section>
+
+<!-- ============ ВКЛАДКА: ЭКИПИРОВКА ============ -->
+<section class="panel" id="panel-gear">
+  <div class="card">
+    <h3>👕 Экипировка</h3>
+    <div class="sub">По одному предмету на слот. Нажми на слот, чтобы выбрать подходящий предмет из инвентаря.</div>
+    <div id="slotsList"></div>
+  </div>
+  <div class="card">
+    <h3>💍 Аксессуары</h3>
+    <div class="sub">В эти слоты можно надеть сразу несколько предметов.</div>
+    <div id="accessorySlotsList"></div>
+  </div>
+  <div class="card">
+    <h3>➕ Добавить снаряжение</h3>
+    <label class="field">Название
+      <input id="gearNewName" placeholder="напр. Тёплая шапка" />
+    </label>
+    <label class="field">Описание
+      <textarea id="gearNewDesc" rows="2" placeholder="как выглядит, откуда взялось"></textarea>
+    </label>
+    <div style="display:flex; gap:8px;">
+      <label class="field" style="flex:1">Редкость
+        <select id="gearNewRarity">
+          <option value="common">⚪ Обычная</option>
+          <option value="uncommon">🟢 Необычная</option>
+          <option value="rare">🔵 Редкая</option>
+          <option value="epic">🟣 Эпическая</option>
+          <option value="legendary">🟡 Легендарная</option>
+          <option value="unique">🟠 Уникальная</option>
+          <option value="mythical">🔴 Мифическая</option>
+        </select>
+      </label>
+      <label class="field" style="flex:1">Состояние
+        <select id="gearNewCondition">
+          <option value="broken">Сломанное</option>
+          <option value="damaged">Повреждённое</option>
+          <option value="worn">Потрёпанное</option>
+          <option value="good" selected>Хорошее</option>
+          <option value="reliable">Надёжное</option>
+          <option value="excellent">Отличное</option>
+          <option value="perfect">Идеальное</option>
+        </select>
+      </label>
+    </div>
+    <label class="field">Эффект
+      <input id="gearNewEffect" placeholder="напр. +2 к концентрации" />
+    </label>
+    <label class="field">Слот
+      <select id="gearNewSlot">
+        <optgroup label="Экипировка (по одному предмету)">
+          <option value="Голова">Голова</option>
+          <option value="Тело">Тело</option>
+          <option value="Тело верхняя">Тело верхняя</option>
+          <option value="Ноги">Ноги</option>
+          <option value="Ступни">Ступни</option>
+          <option value="Обувь">Обувь</option>
+        </optgroup>
+        <optgroup label="Аксессуары (можно несколько)">
+          <option value="Запястье (левое)">Запястье (левое)</option>
+          <option value="Запястье (правое)">Запястье (правое)</option>
+          <option value="Пальцы">Пальцы</option>
+          <option value="Шея">Шея</option>
+          <option value="Гаджет">Гаджет</option>
+        </optgroup>
+      </select>
+    </label>
+    <div class="actions">
+      <button class="btn primary" id="gearNewAdd">Добавить в инвентарь</button>
+      <button class="btn warn" id="gearNewResetBtn">🔄 Сбросить параметры</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3>✨ AI-снаряжение</h3>
+    <label class="field">Тема (необязательно)
+      <input id="aiGearTheme" placeholder="напр. «одежда для зимы» (пусто = случайный)" />
+    </label>
+    <div class="actions">
+      <button class="btn ai" id="aiGenerateEquipmentBtn" style="font-size:10px;">✨ Сгенерировать с AI</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ВКЛАДКА: КРАФТ ============ -->
+<section class="panel" id="panel-craft">
+  <div class="card">
+    <h3>🛠️ Крафт <button class="btn ai" id="aiCraftRecipesBtn" style="font-size:10px;">✨ AI: рецепт (0/3)</button></h3>
+    <div class="sub">Генераций AI на текущем уровне: <span id="craftGenCountSub">0</span>/3 · один рецепт за генерацию</div>
+    <div id="recipesList"></div>
+  </div>
+</section>
+
+<!-- ============ ВКЛАДКА: ДОСТИЖЕНИЯ ============ -->
+<section class="panel" id="panel-ach">
+  <div class="card">
+    <h3>🏆 Достижения</h3>
+    <div id="achList"></div>
+  </div>
+</section>
+
+<!-- ============ ВКЛАДКА: ПРОФИЛЬ ============ -->
+<section class="panel" id="panel-profile">
+  <div class="card profile-hero-card">
+    <div class="profile-hero-main">
+      <div>
+        <div class="profile-name" id="profileName"></div>
+        <div class="sub">Персонаж <span id="profileLevelLabel">· УРОВЕНЬ 5</span></div>
+      </div>
+      <div class="profile-power">
+        <div class="profile-power-label">⚔️ МОЩЬ</div>
+        <div class="profile-power-value" id="profilePower">0</div>
+      </div>
+    </div>
+    <div class="profile-power-breakdown" id="profilePowerBreakdown"></div>
+    <div class="profile-xp-row">
+      <div class="profile-xp-head"><span>⭐ XP</span><b id="profileXPText">0/0</b></div>
+      <div class="bar"><span id="profileXPBar" style="width:0%"></span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>☢️ Атрибуты SPECIAL</h3>
+    <div class="profile-special-grid" id="profileSpecialList"></div>
+  </div>
+
+  <div class="card">
+    <h3>🌳 НАВЫКИ</h3>
+    <div class="profile-skills-grid" id="profileSkillsList"></div>
+  </div>
+
+  <div class="card">
+    <h3>⭐ Перки</h3>
+    <div id="profilePerksList"></div>
+  </div>
+
+  <div class="card">
+    <h3>✨ Активные эффекты</h3>
+    <div id="profileActiveBuffs"></div>
+  </div>
+
+  <div class="card">
+    <h3>🛡️ Экипировка</h3>
+    <div class="sub" id="profileEquipmentCount"></div>
+    <div id="profileEquipmentList"></div>
+  </div>
+
+  <div class="card">
+    <h3>🎒 Инвентарь</h3>
+    <div class="profile-inventory-summary" id="profileInventorySummary"></div>
+  </div>
+
+  <div class="card">
+    <h3>📈 Общая статистика прогресса</h3>
+    <div class="profile-progress-grid" id="profileProgressStats"></div>
+  </div>
+
+  <div class="card">
+    <h3>🏆 Достижения</h3>
+    <div class="profile-achievements-list" id="profileAchievementsList"></div>
+  </div>
+
+</section>
+
+<!-- ============ ВКЛАДКА: ЖУРНАЛ ============ -->
+<section class="panel" id="panel-journal">
+  <div class="card">
+    <h3>📖 Журнал <button class="btn warn" id="journalClearBtn" style="font-size:10px;">🗑 Очистить</button></h3>
+    <div class="sub">История действий персонажа</div>
+
+    <div class="journal-filters">
+      <div class="journal-filter-row">
+        <span class="sub">Тип:</span>
+        <div class="journal-filter-chips" id="journalTypeFilters"></div>
+      </div>
+      <div class="journal-filter-row">
+        <span class="sub">Период:</span>
+        <div class="journal-filter-chips" id="journalDateFilters"></div>
+      </div>
+    </div>
+
+    <div id="journalList"></div>
+  </div>
+</section>
+
+<!-- ============ ВКЛАДКА: ОБЩИЕ НАСТРОЙКИ ============ -->
+<section class="panel" id="panel-settings">
+  <div class="card">
+    <h3>⚙️ Общие настройки</h3>
+    <div class="sub">Звук, уведомления, тема и сохранение прогресса.</div>
+  </div>
+
+  <div class="card">
+    <h3>🔊 Звук</h3>
+    <label class="sound-toggle-row" for="soundEnabledToggle">
+      <span>
+        <span class="sound-toggle-title">Звуковые эффекты</span>
+        <span class="sub" id="soundEnabledLabel">Включен</span>
+      </span>
+      <input type="checkbox" id="soundEnabledToggle" checked role="switch" />
+    </label>
+    <div class="sub" style="margin-top:8px;">Клики, квесты, level-up, рейд, достижения. Без файлов — синтез на устройстве.</div>
+  </div>
+
+  <div class="card">
+    <h3>🔔 Уведомления</h3>
+    <label class="sound-toggle-row" for="notificationsEnabledToggle">
+      <span>
+        <span class="sound-toggle-title">Локальные уведомления</span>
+        <span class="sub" id="notificationsEnabledLabel">Включены</span>
+      </span>
+      <input type="checkbox" id="notificationsEnabledToggle" checked role="switch" />
+    </label>
+    <div class="sub" style="margin-top:8px;">Сейчас: окончание таймера рейда (даже если приложение свёрнуто). Нужно разрешение Android.</div>
+  </div>
+
+  <div class="card">
+    <h3>🎨 Тема оформления</h3>
+    <div class="theme-grid" id="themeGrid"></div>
+  </div>
+
+  <div class="card">
+    <h3>💾 Управление сейвом</h3>
+    <div class="actions">
+      <button type="button" class="btn" id="exportBtn">⬇️ Скачать сейв</button>
+      <button class="btn" id="importBtn">⬆️ Загрузить сейв</button>
+      <button type="button" class="btn warn" id="restoreSafetyBackupBtn">♻️ Откатить к копии до импорта/сброса</button>
+      <button type="button" class="btn warn" id="restoreIndexedDBBtn" disabled>♻️ Восстановить копию IndexedDB</button>
+      <div class="sub" id="indexedDBSaveStatus">Проверка резервной копии...</div>
+      <div class="sub">Перед импортом и сбросом игра сама сохраняет локальную копию текущего прогресса.</div>
+      <input type="file" id="importFile" accept=".json" style="display:none;">
+    </div>
+  </div>
+</section>
+
+<!-- ============ ВКЛАДКА: НАСТРОЙКИ AI ============ -->
+<section class="panel" id="panel-settings-ai">
+  <div class="card">
+    <h3>🤖 Настройки AI</h3>
+    <div class="sub" id="aiStatusSettings">🤖 AI: проверка...</div>
+    <div class="sub">Генерация квестов, предметов и текста с помощью AI.</div>
+  </div>
+
+  <div class="card">
+    <h3>🎭 Атмосфера контента</h3>
+    <div class="sub">Пресет влияет на названия, описания и лут во всех AI-генерациях. Шаги квестов и реальные цели — всегда из обычной жизни.</div>
+    <button type="button" class="btn" id="aiThemePickBtn" style="margin-top:8px; width:100%; text-align:left;">
+      <span id="aiThemePickLabel">Реальный мир</span>
+    </button>
+    <div class="sub" id="aiThemeDescription" style="margin-top:8px;">Современная повседневность, узнаваемые места и реальные жизненные задачи.</div>
+    <select class="input" id="aiThemeSelect" aria-label="Атмосфера AI-контента" style="display:none;">
+      <option value="real_world">Реальный мир</option>
+      <option value="fantasy">Фэнтези</option>
+      <option value="sci_fi">Научная фантастика</option>
+      <option value="post_apocalyptic">Постапокалипсис</option>
+    </select>
+  </div>
+
+  <div class="card">
+    <h3>🎁 Бесплатный лимит</h3>
+    <div class="sub" id="aiFreeLeft" style="font-weight:600;">Осталось бесплатных запросов: —</div>
+    <div class="sub" style="margin-top:8px;">В режиме «Бесплатный» доступно до 10 успешных генераций за скользящие 24 часа. Лимит проверяется сервером; неудачный ответ или ошибка разбора не расходуют запрос.</div>
+  </div>
+
+  <div class="card">
+    <h3>🔀 Режим доступа</h3>
+    <button type="button" class="btn" id="aiModePickBtn" style="margin-top:6px; width:100%; text-align:left;">
+      <span id="aiModePickLabel">Бесплатный (10 / 24 ч)</span>
+    </button>
+    <!-- legacy for code that reads select -->
+    <select class="input" id="aiModeSelect" style="display:none;">
+      <option value="free">Бесплатный</option>
+      <option value="own_key">Свой ключ</option>
+    </select>
+    <div class="sub" style="margin-top:8px;">«Свой ключ» — без лимита приложения; токены списываются с баланса вашего ключа Tooken (личный или клиент перепродажи).</div>
+  </div>
+
+  <div id="aiOwnKeyBlock" class="card" style="display:none;">
+    <h3>🔑 API-ключ</h3>
+    <div class="sub">Хранится только на этом устройстве. Не публикуйте ключ.</div>
+    <input class="input" id="aiOwnKeyInput" type="password" autocomplete="off"
+           placeholder="tc_live_..." style="margin-top:8px; width:100%; box-sizing:border-box;">
+    <div class="actions" style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+      <button type="button" class="btn" id="aiOwnKeySaveBtn">Сохранить ключ</button>
+      <button type="button" class="btn warn" id="aiOwnKeyClearBtn">Очистить</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>🧠 Модель</h3>
+    <div class="sub">Выбери модель для AI-генераций.</div>
+    <button type="button" class="btn" id="aiModelPickBtn" style="margin-top:8px; width:100%; text-align:left;">
+      <span id="aiModelPickLabel">DeepSeek V4 Pro</span>
+    </button>
+    <select class="input" id="aiModelSelect" style="display:none;">
+      <option value="deepseek-v4.1-flash">DeepSeek V4.1 Flash</option>
+      <option value="deepseek-v4-flash">DeepSeek V4 Pro</option>
+      <option value="glm-5.3-flash">GLM 5.3 Flash</option>
+      <option value="gpt-6-luna">GPT-6 Luna</option>
+      <option value="gpt-6-astra">GPT-6 Astra</option>
+    </select>
+    <div class="sub" id="aiModelDescription" style="margin-top:8px;">Сбалансированная модель для детальных и разнообразных ответов.</div>
+    <div class="sub" id="aiModelCostHint" style="margin-top:4px;">Стоимость: 0.3x от базовой стоимости токенов.</div>
+  </div>
+
+  <!-- legacy hidden provider select for wireSettings -->
+  <select class="input" id="aiProviderSelect" style="display:none;">
+    <option value="tooken" selected>AI service</option>
+  </select>
+</section>
+
+<!-- ============ ЛОКАЛЬНЫЙ ВХОД НОВОГО ПОЛЬЗОВАТЕЛЯ ============ -->
+<div id="firstLaunchOverlay" class="first-launch-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="firstLaunchTitle">
+  <div class="first-launch-card">
+    <div class="first-launch-mark">TCoL</div>
+    <div class="first-launch-title" id="firstLaunchTitle">THE CREED OF LIFE</div>
+    <div class="first-launch-subtitle">Добро пожаловать</div>
+    <label class="first-launch-label" for="firstLaunchNickname">Никнейм</label>
+    <input id="firstLaunchNickname" class="first-launch-input" type="text" maxlength="24" autocomplete="nickname" spellcheck="false" placeholder="Введите свой никнейм">
+    <div id="firstLaunchError" class="first-launch-error" aria-live="polite"></div>
+    <button type="button" class="btn primary first-launch-btn" id="firstLaunchStartBtn">НАЧАТЬ</button>
+    <div class="first-launch-note">Никнейм сохраняется только на этом устройстве.</div>
+  </div>
+</div>
+</div>
+
+<script src="js/runtime.js" defer></script>
+<script src="js/mobile-ux.js" defer></script>
+<script src="js/capacitor-bridge.js" defer></script>
+</body>
+</html>

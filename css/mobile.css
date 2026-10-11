@@ -1,0 +1,256 @@
+/* ==========================================================================
+   Mobile / responsive — Stage 2.2 + bottom nav (v3.6.1)
+   ========================================================================== */
+
+@media (max-width: 760px) {
+  button,
+  .btn,
+  .tab-primary,
+  .tab-subnav button,
+  .special-cell .sp-plus {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@media (max-width: 800px) {
+  .shop-item {
+    font-size: 14px;
+    line-height: 1.45;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 6px;
+  }
+  .shop-item > div:first-child {
+    min-width: 0;
+    width: 100%;
+  }
+  .shop-item > div:last-child {
+    margin-left: 0;
+    width: 100%;
+    min-width: 0;
+    align-self: auto;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+  .shop-item > div:last-child > span {
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 760px) {
+  .tabs-row.bottom-nav .tab-primary {
+    min-height: 56px;
+    padding: 8px 2px 10px;
+    font-size: 10px;
+  }
+  .tab-primary-icon {
+    font-size: 20px;
+  }
+  .tab-primary-icon-only .tab-primary-icon {
+    font-size: 24px;
+  }
+  .tab-subnav {
+    bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+    gap: 8px;
+    padding: 10px;
+  }
+  .tab-subnav button {
+    min-height: 48px;
+    padding: 12px 12px;
+    font-size: 13px;
+  }
+
+  button.btn {
+    min-height: 48px;
+    min-width: 48px;
+    padding: 10px 12px;
+    font-size: 11px;
+    flex: 1 0 auto;
+  }
+  .actions {
+    gap: 8px;
+  }
+  .actions > .btn {
+    flex: 1 1 auto;
+  }
+
+  input,
+  textarea,
+  select {
+    min-height: 48px;
+    font-size: 16px !important;
+  }
+  textarea {
+    min-height: 96px;
+  }
+
+  .special-cell .sp-plus {
+    flex: 0 0 48px !important;
+    width: 48px !important;
+    min-width: 48px !important;
+    min-height: 48px !important;
+    padding: 0 !important;
+    font-size: 16px !important;
+  }
+
+  .confirm-overlay,
+  .raid-confirm-overlay,
+  .craft-success-overlay,
+  .level-up-overlay,
+  .achievement-unlock-overlay,
+  .ai-overlay,
+  .first-launch-overlay {
+    padding:
+      calc(12px + env(safe-area-inset-top))
+      calc(12px + env(safe-area-inset-right))
+      calc(12px + env(safe-area-inset-bottom))
+      calc(12px + env(safe-area-inset-left));
+  }
+
+  .confirm-box,
+  .ai-overlay-card,
+  .first-launch-card {
+    max-height: calc(100dvh - 24px);
+    overflow: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .card {
+    padding: 11px 12px;
+  }
+  .card h3 {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-today-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .special-grid {
+    grid-template-columns: 1fr;
+  }
+  .header-top {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .char-name {
+    font-size: 18px;
+  }
+  .header-power {
+    margin-left: auto;
+    order: 2;
+  }
+  .char-level {
+    order: 3;
+    width: 100%;
+  }
+  .save-indicator {
+    right: 6px;
+    bottom: 5px;
+  }
+  .save-indicator .save-icon {
+    font-size: 12px !important;
+  }
+  .profile-progress-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tab-primary-label {
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 380px) {
+  #app {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  .tab-primary-label {
+    font-size: 8px;
+  }
+  .card {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}
+
+/* Keyboard: hide bottom nav, free vertical space */
+html.keyboard-open #app {
+  padding-bottom: calc(24px + var(--keyboard-height, 0px));
+}
+html.keyboard-open body {
+  scroll-padding-bottom: calc(var(--keyboard-height, 0px) + 24px);
+}
+html.keyboard-open .tabs-row.bottom-nav,
+html.keyboard-open .tab-menu-backdrop {
+  display: none !important;
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  body::after {
+    content: 'Поверните телефон вертикально';
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    text-align: center;
+    background: var(--bg);
+    color: var(--phosphor-bright);
+    font: 700 14px/1.5 'JetBrains Mono', monospace;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hit-flash,
+  .hit-spark {
+    animation: none;
+    display: none;
+  }
+  .special-cell.special-awakening,
+  .special-awakening::after,
+  .special-awakening .sp-letter,
+  .special-awakening .sp-value {
+    animation: none;
+  }
+  .bar.boss-bar > span {
+    transition: none;
+  }
+  .tab-group-collapsible.open .tab-subnav {
+    animation: none !important;
+  }
+}
+
+
+/* Stage 3.4 — legibility on budget IPS/TN */
+@media (max-width: 760px) {
+  .quest-meta, .quest-section-title {
+    color: var(--phosphor-dim);
+    opacity: 1;
+  }
+  .bonus-note, .raid-expired-note {
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--amber);
+  }
+  .empty {
+    color: var(--phosphor-dim);
+    font-size: 13px;
+    padding: 16px 8px;
+  }
+  .pill, .reward-pill {
+    border-color: var(--line);
+  }
+}
