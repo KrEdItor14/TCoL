@@ -1,7 +1,7 @@
 # THE CREED OF LIFE — Единая дорожная карта
 
-**Актуальная версия документа:** 08.10.2026  
-**Текущая кодовая база:** v3.8.x (Settings UI + AI AI service-only + theme/quest patches)  
+**Актуальная версия документа:** 09.10.2026  
+**Текущая кодовая база:** v3.8.x (Settings UI + AI Tooken-only + theme/quest patches)  
 **Текущая цель:** Публикация на RuStore  
 **Статус:** Stage 1–3 ✅ · **Stage 3.5 (Release Candidate)** ← сейчас · Stage 4 (RuStore) после RC
 
@@ -18,7 +18,7 @@
 - Storage Layer 2.0 (Web + IndexedDB + Capacitor Preferences), envelope v2
 - Capacitor 8 Android-обёртка, 87 density assets, device PASS (Honor + Redmi Note 9)
 - Звук, анимации, Local Notifications, CRT/themes, terminal boot
-- AI: ?????? ? ???????????? ??????????? ???????, ??????????? ???? ????? Deno proxy
+- AI: Tooken Club only, client free limit, own key via Deno proxy
 - Settings UI (v3.8.1) + последующие AI/theme/quest патчи до ~v3.8.7
 
 ### Главный блокер прямо сейчас
@@ -78,7 +78,7 @@ Release Candidate (подписанный билд)      ← МЫ ЗДЕСЬ (St
 - [x] CRT / light-dark-space themes + item FX
 - [x] Terminal boot + logo/icon resources
 - [x] Settings UI (Общие + AI)
-- [x] AI AI service-only + proxy key flow
+- [x] AI Tooken-only + proxy key flow
 - [ ] Мелкий UX-полиш — post-release / по необходимости
 
 ---
@@ -111,7 +111,7 @@ Release Candidate (подписанный билд)      ← МЫ ЗДЕСЬ (St
 ### 3.5.3. Гигиена кода под RC
 
 - [ ] Убрать/скрыть dev-only UI и явные debug-логи в прод-пути
-- [ ] Проверить, что старые упоминания OpenRouter / provod не торчат в UI и не ломают AI service-only flow
+- [ ] Проверить, что старые упоминания OpenRouter / provod не торчат в UI и не ломают Tooken-only flow
 - [ ] `allowBackup` / FileProvider — осознанное решение (оставить или ужесточить)
 - [ ] Размер APK/AAB разумный (без лишних `.gradle`/build-кэшей в поставке)
 
@@ -146,6 +146,19 @@ Release Candidate (подписанный билд)      ← МЫ ЗДЕСЬ (St
 **Цель:** первый публичный релиз в каталоге RuStore.  
 **Входное условие:** Stage 3.5 закрыт (есть подписанный RC и device smoke).
 
+### 4.0. AI free-tier / proxy (обязательно до upload)
+
+Решение от 09.10.2026: на этапе RC оставляем текущую схему (клиентский `PROXY_SECRET` + лимит только на устройстве).  
+**Перед загрузкой в RuStore** этот вопрос нужно закрыть осознанно — не «если вспомним».
+
+- [ ] Пересмотреть защиту бесплатного AI-лимита (10/24ч)
+  - Сейчас: `PROXY_SECRET` в APK (извлекаем), лимит только client-side, `deviceId` на прокси игнорируется
+  - Варианты: (A) оставить как есть и принять риск сжигания `TOOKEN_API_KEY`, (B) серверный rate-limit по IP + привязка к deviceId, (C) убрать секрет и упростить
+- [ ] Зафиксировать выбранный вариант в этом файле и в прокси/клиенте
+- [ ] Если выбран B — внедрить до первой публичной сборки
+
+**Не начинать upload (4.3), пока 4.0 не отмечен.**
+
 ### 4.1. Юридическое и данные
 
 - [ ] Privacy Policy на **русском** (публичный URL)
@@ -176,7 +189,7 @@ Release Candidate (подписанный билд)      ← МЫ ЗДЕСЬ (St
 
 ## Этап 5. После публикации (бэклог)
 
-- AI-gateway / abuse-защита
+- AI-gateway / более жёсткая abuse-защита (если в 4.0 выбрали минимальный вариант)
 - Cloud-сейвы / аккаунты
 - UX по отзывам
 - Другие сторы (тот же package + тот же signing key)
@@ -191,17 +204,19 @@ Release Candidate (подписанный билд)      ← МЫ ЗДЕСЬ (St
 | Release APK/AAB + подпись        | ❌ debug   | **Обязательно** | Обязательно     |
 | versionCode / versionName        | ❌ 1 / 1.0 | **Обязательно** | Обязательно     |
 | Device smoke на release          | ❌         | **Обязательно** | Желательно      |
+| AI free-tier / proxy (п. 4.0)    | ⚠️ клиентский секрет | —        | **Обязательно решить** |
 | Privacy Policy (RU, URL)         | ❌         | —             | Обязательно     |
 | Скриншоты + описание + иконка    | ❌         | —             | Обязательно     |
 | Package name / targetSdk         | ✅         | Ок            | Ок              |
 
-**Правило:** не начинать upload в RuStore, пока Stage 3.5 не закрыт.
+**Правило:** не начинать upload в RuStore, пока Stage 3.5 не закрыт **и** пункт 4.0 (AI free-tier) не закрыт.
 
 ---
 
 ## История решений
 
 - 03–04.10.2026 — Stage 2 закрыт на устройствах; Stage 3 — полировка.
-- 07–08.10.2026 — AI AI service-only, Settings UI, серия v3.8.x.
+- 07–08.10.2026 — AI Tooken-only, Settings UI, серия v3.8.x.
 - 08.10.2026 — цель = RuStore; Stage 4 описан целиком.
 - **08.10.2026 — введён промежуточный Stage 3.5 (Release Candidate): сначала подписанный RC + device smoke, затем юридическое и карточка.**
+- **09.10.2026 — AI free-tier / PROXY_SECRET: на RC оставляем как есть (клиентский секрет + лимит на устройстве). Обязательный пересмотр — пункт 4.0, до загрузки в RuStore.**
