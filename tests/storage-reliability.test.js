@@ -42,6 +42,11 @@ const context = {
     "gpt-6-astra": "GPT-6 Astra"
   },
   window: { localStorage },
+  DESC_XP_CAP: 45,
+  DESC_XP_PER_CHAR: 0.12,
+  XP_PER_MINUTE: 0.22,
+  COIN_RATIO: 0.55,
+  SKILL_POOL_RATIO: 0.65,
   document: { getElementById: () => null },
   toast: () => {},
   renderAll: () => {},
@@ -59,11 +64,13 @@ vm.runInContext(fs.readFileSync("js/state.js", "utf8"), context, { filename:"js/
 vm.runInContext(fs.readFileSync("js/game-state.js", "utf8"), context, { filename:"js/game-state.js" });
 vm.runInContext(fs.readFileSync("js/storage.js", "utf8"), context, { filename:"js/storage.js" });
 vm.runInContext(fs.readFileSync("js/save.js", "utf8"), context, { filename:"js/save.js" });
-vm.runInContext("this.__GameState = GameState; this.__StorageService = StorageService; this.__SaveService = SaveService;", context);
+vm.runInContext(fs.readFileSync("js/quest-core.js", "utf8"), context, { filename:"js/quest-core.js" });
+vm.runInContext("this.__GameState = GameState; this.__StorageService = StorageService; this.__SaveService = SaveService; this.__QuestCore = QuestCore;", context);
 
 const GameState = context.__GameState;
 const StorageService = context.__StorageService;
 const SaveService = context.__SaveService;
+const QuestCore = context.__QuestCore;
 
 (async () => {
   const base = context.defaultState();
@@ -94,6 +101,46 @@ const SaveService = context.__SaveService;
   GameState.replace({ character:{level:9,name:"Changed"}, skills:{}, quests:{planned:[],active:[],completed:[],stats:{completed:0,failed:0,aborted:0}}, journal:[], coinLog:[] });
   assert.strictEqual(await context.restoreSafetyBackup(), true);
   assert.strictEqual(GameState.get().character.level, 1);
+
+  const migrated = context.defaultState();
+  migrated.quests = {
+    planned: [{ type:"рейд", id:8, total:4, progress:2 }],
+    active: [{ type:"обычный", id:12, total:3, progress:1 }, { type:"обычный", title:"Missing ID" }],
+    completed: [{ id:15, total:7, progress:6 }],
+    stats: { completed:0, failed:0, aborted:0 }
+  };
+  migrated.nextQuestId = 3;
+  context.migrateState(migrated, { legacyAchievements:false });
+  assert.strictEqual(migrated.nextQuestId, 17);
+  assert.deepStrictEqual(
+    [migrated.quests.planned[0].id, migrated.quests.active[0].id, migrated.quests.active[1].id, migrated.quests.completed[0].id],
+    [8, 12, 16, 15]
+  );
+  [migrated.quests.planned[0], ...migrated.quests.active, ...migrated.quests.completed].forEach(q => {
+    assert.strictEqual("total" in q, false);
+    assert.strictEqual("progress" in q, false);
+  });
+
+  const allocationState = context.defaultState();
+  allocationState.nextQuestId = 20;
+  GameState.replace(allocationState);
+  const plannedRaid = QuestCore.createQuest({ type:"рейд", id:900, total:5, progress:2, estMinutes:30 });
+  const activeQuest = QuestCore.startNewQuest({ type:"обычный", id:900, total:3, progress:1 });
+  assert.strictEqual(plannedRaid.quest.id, 20);
+  assert.strictEqual(activeQuest.quest.id, 21);
+  assert.strictEqual(QuestCore.startPlannedQuest(0).id, 20);
+  assert.strictEqual(allocationState.nextQuestId, 22);
+  assert.strictEqual(context.formatQuestId(1), "001");
+  assert.strictEqual(context.formatQuestId(1000), "1000");
+  assert.strictEqual(QuestCore.advanceStep, undefined);
+  assert.strictEqual(context.computeQuestReward("normal", 30, [], "").heroXP, 85);
+
+  const roundTrip = context.migrateSavePayload(context.createSaveEnvelope(allocationState));
+  assert.strictEqual(roundTrip.nextQuestId, 22);
+  assert.deepStrictEqual(
+    [roundTrip.quests.active[0].id, roundTrip.quests.active[1].id],
+    [21, 20]
+  );
 
   console.log("storage-reliability: PASS");
 })().catch(err => { console.error(err); process.exitCode = 1; });

@@ -14,7 +14,6 @@ const QUEST_COMPLETED_MAX = 200;
 const XP_PER_MINUTE = 0.22;
 const COIN_RATIO = 0.55;
 const SKILL_POOL_RATIO = 0.65;
-const STEP_BONUS = 0.08;
 const DESC_XP_PER_CHAR = 0.12;
 const DESC_XP_CAP = 45;
 

@@ -14,16 +14,26 @@ const DIFFICULTY_KEYS = ['trivial','easy','normal','hard','epic'];
 function safeDifficulty(d){ return DIFFICULTY_KEYS.includes(d) ? d : 'normal'; }
 function diffMeta(key){ return DIFFICULTY_TABLE[key] || DIFFICULTY_TABLE.normal; }
 
+function formatQuestId(id){
+  return String(Number(id) || 0).padStart(3, '0');
+}
+
+function allocateQuestId(targetState = S()){
+  const nextId = Number(targetState.nextQuestId);
+  const id = Number.isSafeInteger(nextId) && nextId > 0 ? nextId : 1;
+  targetState.nextQuestId = id + 1;
+  return id;
+}
+
 function descriptionBonus(desc){
   const len = (desc || "").trim().length;
   return Math.min(DESC_XP_CAP, Math.round(len * DESC_XP_PER_CHAR));
 }
 
-function computeQuestReward(difficultyKey, minutes, steps, skillKeys, desc){
+function computeQuestReward(difficultyKey, minutes, skillKeys, desc){
   const tier = DIFFICULTY_TABLE[difficultyKey] || DIFFICULTY_TABLE.normal;
-  const stepFactor = 1 + Math.max(0, (steps||1) - 1) * STEP_BONUS;
   const descBonus = descriptionBonus(desc);
-  let heroXP = (tier.base + minutes * XP_PER_MINUTE + descBonus) * tier.mult * stepFactor;
+  let heroXP = (tier.base + minutes * XP_PER_MINUTE + descBonus) * tier.mult;
   heroXP = Math.max(5, Math.round(heroXP / 5) * 5);
   const coins = Math.max(5, Math.round(heroXP * COIN_RATIO / 5) * 5);
   const pool = Math.round(heroXP * SKILL_POOL_RATIO);
@@ -99,7 +109,9 @@ function createQuest(data) {
   if (data.type !== 'рейд') return { ok:false, reason:'planned_raids_only' };
   if (!Array.isArray(S().quests.planned)) S().quests.planned = [];
   const q = { ...data };
-  q.id = q.id || S().nextQuestId++;
+  q.id = allocateQuestId();
+  delete q.total;
+  delete q.progress;
   q.type = 'рейд';
   S().quests.planned.push(q);
   return { ok:true, quest:q };
@@ -110,8 +122,11 @@ function startNewQuest(q) {
   if (!Array.isArray(S().quests.active)) S().quests.active = [];
   // Raids must be planned first, then started from the planned list.
   if (q.type === 'рейд') return { ok:false, reason:'raid_must_be_planned' };
-  S().quests.active.push(q);
-  return { ok:true, quest:q };
+  const quest = { ...q, id:allocateQuestId() };
+  delete quest.total;
+  delete quest.progress;
+  S().quests.active.push(quest);
+  return { ok:true, quest };
 }
 
 function isRaidTimeExpired(q = null) {
@@ -152,13 +167,6 @@ const QuestCore = Object.freeze({
       S().raidTotalMinutes = item.estMinutes || 0;
     }
     return item;
-  },
-
-  advanceStep(index){
-    const q = S().quests.active[index];
-    if(!q || !q.total) return null;
-    q.progress = Math.min(q.total, (q.progress || 0) + 1);
-    return q;
   },
 
   completeQuest(index, withBonus){
@@ -239,7 +247,7 @@ const QuestCore = Object.freeze({
     }
     S().quests.stats.completed++;
     const events = [
-      { type:'quest', icon:'⚔️', text:`Выполнен квест: ${q.title}` }
+      { type:'quest', icon:'⚔️', text:`Выполнен квест #${formatQuestId(q.id)}: ${q.title}`, meta:{ questId:q.id } }
     ];
     if(effectiveCombined.coins) events.push({ type:'coins', icon:'💰', text:`Получено монет: +${effectiveCombined.coins}` });
     if(effectiveCombined.heroXP) events.push({ type:'xp', icon:'⭐', text:`Получено XP: +${effectiveCombined.heroXP}` });

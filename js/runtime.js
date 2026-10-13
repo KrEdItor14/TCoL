@@ -18,7 +18,6 @@ const QUEST_COMPLETED_MAX = 200;
 const XP_PER_MINUTE = 0.22;
 const COIN_RATIO = 0.55;
 const SKILL_POOL_RATIO = 0.65;
-const STEP_BONUS = 0.08;
 const DESC_XP_PER_CHAR = 0.12;
 const DESC_XP_CAP = 45;
 
@@ -1053,28 +1052,6 @@ try { return JSON.parse(cleaned); } catch {}
 return undefined;
 }
 
-function questDifficultyFromSteps(count){
-    const n = Math.max(1, Math.min(5, Number(count) || 1));
-    return ['trivial','easy','normal','hard','epic'][n - 1];
-}
-
-function questMinutesFromSteps(count){
-    const n = Math.max(1, Math.min(5, Number(count) || 1));
-    return [10, 20, 30, 45, 60][n - 1];
-}
-
-function normalizeAIQuestSteps(rawSteps, desc){
-    let steps = Array.isArray(rawSteps)
-        ? rawSteps.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim().slice(0, 180))
-        : [];
-    if (!steps.length) {
-        const len = String(desc || '').trim().length;
-        const count = len > 420 ? 4 : len > 260 ? 3 : len > 120 ? 2 : 1;
-        steps = Array.from({length: count}, (_, i) => `Этап ${i + 1}`);
-    }
-    return steps.slice(0, 5);
-}
-
 function normalizeAIQuestSkills(rawSkills){
     const valid = new Set(Array.isArray(SKILL_NAMES) ? SKILL_NAMES : []);
     const selected = Array.isArray(rawSkills)
@@ -1140,7 +1117,6 @@ ${AI_NO_NOTE_RULE}
 ПРАВИЛА:
 - Название короткое, выразительное, с эмодзи; не просто название бытового действия.
 - desc: 2-3 предложения; конкретно объясни задачу и ожидаемый результат.
-- steps: РОВНО 2-5 этапов. Каждый этап — самостоятельное, конкретное и проверяемое действие. Не пиши «начать/продолжить/закончить» без конкретики.
 - skills: 1-3 действительно используемых навыка.
 - Не генерируй difficulty, minutes, XP героя, монеты, rarity, condition, itemLevel, power, ID или коэффициенты — это рассчитывает игра.
 - items — только кандидаты наград и только если они логично связаны с квестом.
@@ -1148,13 +1124,12 @@ ${AI_NO_NOTE_RULE}
 - consumable = одноразовый реалистичный расходник с временным эффектом 15-1440 минут.
 - equipment = экипируемый предмет со слотом из списка; не указывай его rarity, condition, itemLevel или power.
 JSON:
-{"title":"название с эмодзи","desc":"описание","steps":["этап 1","этап 2"],"skills":["точное название навыка"],"items":[{"type":"material","name":"сырьё","desc":"описание"},{"type":"consumable","name":"расходник","desc":"описание","effect":"+2 к 🧘 Концентрация","modifiers":{"skillFlat":{"🧘 Концентрация":2}},"durationMinutes":30},{"type":"equipment","name":"снаряжение","desc":"описание","effect":"+1 к 🎲 Удача","modifiers":{"specialFlat":{"🎲 Удача":1}},"slot":"Аксессуар"}]}
+{"title":"название с эмодзи","desc":"описание","skills":["точное название навыка"],"items":[{"type":"material","name":"сырьё","desc":"описание"},{"type":"consumable","name":"расходник","desc":"описание","effect":"+2 к 🧘 Концентрация","modifiers":{"skillFlat":{"🧘 Концентрация":2}},"durationMinutes":30},{"type":"equipment","name":"снаряжение","desc":"описание","effect":"+1 к 🎲 Удача","modifiers":{"specialFlat":{"🎲 Удача":1}},"slot":"Аксессуар"}]}
 Верни только один JSON-объект.`;
     const prompt = `Создай один квест на тему: "${theme || 'случайное приключение'}". Сделай его выполнимым в реальной жизни и логично связанным с выбранными навыками и кандидатами наград.`;
     const result = await queryAI(prompt, systemPrompt);
-    const steps = normalizeAIQuestSteps(result?.steps, result?.desc);
     const skills = normalizeAIQuestSkills(result?.skills);
-    return { title: typeof result?.title === 'string' && result.title.trim() ? result.title.trim() : '📜 Новый квест', desc: typeof result?.desc === 'string' && result.desc.trim() ? result.desc.trim() : 'Выполни задачу последовательно и доведи её до результата.', stepDetails: steps, steps: steps.length, difficulty: questDifficultyFromSteps(steps.length), minutes: questMinutesFromSteps(steps.length), skills, items: Array.isArray(result?.items) ? result.items : [] };
+    return { title: typeof result?.title === 'string' && result.title.trim() ? result.title.trim() : '📜 Новый квест', desc: typeof result?.desc === 'string' && result.desc.trim() ? result.desc.trim() : 'Выполни задачу последовательно и доведи её до результата.', difficulty: 'normal', minutes: 30, skills, items: Array.isArray(result?.items) ? result.items : [] };
 }
 
 function normalizeGeneratedBossPhases(phases, bossType, fallbackPhases) {
@@ -1400,7 +1375,6 @@ const titleEl = document.getElementById('qNewTitle');
 const descEl = document.getElementById('qNewDesc');
 const diffEl = document.getElementById('qNewDifficulty');
 const minEl = document.getElementById('qNewMinutes');
-const stepEl = document.getElementById('qNewSteps');
 if (!questData || !questData.title || !questData.desc) {
     console.error('AI вернул неожиданную структуру:', questData);
     throw new Error('AI вернул ответ без полей title/desc. Попробуй ещё раз.');
@@ -1409,7 +1383,6 @@ if (!questData || !questData.title || !questData.desc) {
   if (descEl) descEl.value = questData.desc;
   if (diffEl) diffEl.value = questData.difficulty || 'normal';
   if (minEl) minEl.value = questData.minutes || 30;
-  if (stepEl) stepEl.value = questData.steps || 1;
 if (questData.skills && Array.isArray(questData.skills)) {
 document.querySelectorAll('#qNewSkillsPick input[type=checkbox]').forEach(cb => {
 cb.checked = questData.skills.includes(cb.value);
@@ -2111,6 +2084,24 @@ function migrateState(parsed, { legacyAchievements = false } = {}) {
     parsed.quests.active = Array.isArray(parsed.quests.active) ? parsed.quests.active : [];
     parsed.quests.completed = Array.isArray(parsed.quests.completed) ? parsed.quests.completed : [];
     if (parsed.quests.completed.length > QUEST_COMPLETED_MAX) parsed.quests.completed = parsed.quests.completed.slice(-QUEST_COMPLETED_MAX);
+    const questRecords = [...parsed.quests.planned, ...parsed.quests.active, ...parsed.quests.completed]
+        .filter(q => q && typeof q === 'object' && !Array.isArray(q));
+    let maxQuestId = 0;
+    questRecords.forEach(q => {
+        delete q.total;
+        delete q.progress;
+        const id = Number(q.id);
+        if (Number.isSafeInteger(id) && id > 0) {
+            q.id = id;
+            maxQuestId = Math.max(maxQuestId, id);
+        } else {
+            delete q.id;
+        }
+    });
+    parsed.nextQuestId = Math.max(1, toInt(parsed.nextQuestId, 1), maxQuestId + 1);
+    questRecords.forEach(q => {
+        if (q.id === undefined) q.id = allocateQuestId(parsed);
+    });
     if (!parsed.quests.stats || typeof parsed.quests.stats !== 'object') parsed.quests.stats = { completed:0, failed:0, aborted:0 };
     parsed.quests.stats.completed = Math.max(0, Number(parsed.quests.stats.completed) || 0);
     parsed.quests.stats.failed = Math.max(0, Number(parsed.quests.stats.failed) || 0);
@@ -3875,16 +3866,26 @@ const DIFFICULTY_KEYS = ['trivial','easy','normal','hard','epic'];
 function safeDifficulty(d){ return DIFFICULTY_KEYS.includes(d) ? d : 'normal'; }
 function diffMeta(key){ return DIFFICULTY_TABLE[key] || DIFFICULTY_TABLE.normal; }
 
+function formatQuestId(id){
+  return String(Number(id) || 0).padStart(3, '0');
+}
+
+function allocateQuestId(targetState = S()){
+  const nextId = Number(targetState.nextQuestId);
+  const id = Number.isSafeInteger(nextId) && nextId > 0 ? nextId : 1;
+  targetState.nextQuestId = id + 1;
+  return id;
+}
+
 function descriptionBonus(desc){
   const len = (desc || "").trim().length;
   return Math.min(DESC_XP_CAP, Math.round(len * DESC_XP_PER_CHAR));
 }
 
-function computeQuestReward(difficultyKey, minutes, steps, skillKeys, desc){
+function computeQuestReward(difficultyKey, minutes, skillKeys, desc){
   const tier = DIFFICULTY_TABLE[difficultyKey] || DIFFICULTY_TABLE.normal;
-  const stepFactor = 1 + Math.max(0, (steps||1) - 1) * STEP_BONUS;
   const descBonus = descriptionBonus(desc);
-  let heroXP = (tier.base + minutes * XP_PER_MINUTE + descBonus) * tier.mult * stepFactor;
+  let heroXP = (tier.base + minutes * XP_PER_MINUTE + descBonus) * tier.mult;
   heroXP = Math.max(5, Math.round(heroXP / 5) * 5);
   const coins = Math.max(5, Math.round(heroXP * COIN_RATIO / 5) * 5);
   const pool = Math.round(heroXP * SKILL_POOL_RATIO);
@@ -3960,7 +3961,9 @@ function createQuest(data) {
   if (data.type !== 'рейд') return { ok:false, reason:'planned_raids_only' };
   if (!Array.isArray(S().quests.planned)) S().quests.planned = [];
   const q = { ...data };
-  q.id = q.id || S().nextQuestId++;
+  q.id = allocateQuestId();
+  delete q.total;
+  delete q.progress;
   q.type = 'рейд';
   S().quests.planned.push(q);
   return { ok:true, quest:q };
@@ -3971,8 +3974,11 @@ function startNewQuest(q) {
   if (!Array.isArray(S().quests.active)) S().quests.active = [];
   // Raids must be planned first, then started from the planned list.
   if (q.type === 'рейд') return { ok:false, reason:'raid_must_be_planned' };
-  S().quests.active.push(q);
-  return { ok:true, quest:q };
+  const quest = { ...q, id:allocateQuestId() };
+  delete quest.total;
+  delete quest.progress;
+  S().quests.active.push(quest);
+  return { ok:true, quest };
 }
 
 function isRaidTimeExpired(q = null) {
@@ -4013,13 +4019,6 @@ const QuestCore = Object.freeze({
       S().raidTotalMinutes = item.estMinutes || 0;
     }
     return item;
-  },
-
-  advanceStep(index){
-    const q = S().quests.active[index];
-    if(!q || !q.total) return null;
-    q.progress = Math.min(q.total, (q.progress || 0) + 1);
-    return q;
   },
 
   completeQuest(index, withBonus){
@@ -4100,7 +4099,7 @@ const QuestCore = Object.freeze({
     }
     S().quests.stats.completed++;
     const events = [
-      { type:'quest', icon:'⚔️', text:`Выполнен квест: ${q.title}` }
+      { type:'quest', icon:'⚔️', text:`Выполнен квест #${formatQuestId(q.id)}: ${q.title}`, meta:{ questId:q.id } }
     ];
     if(effectiveCombined.coins) events.push({ type:'coins', icon:'💰', text:`Получено монет: +${effectiveCombined.coins}` });
     if(effectiveCombined.heroXP) events.push({ type:'xp', icon:'⭐', text:`Получено XP: +${effectiveCombined.heroXP}` });
@@ -4193,17 +4192,7 @@ function questMetaRow(q){
     const time = hours ? (minutes ? `${hours}ч ${minutes}м` : `${hours}ч`) : `${minutes}м`;
     timeHtml = `<span class="pill time">⏱ ${time}</span>`;
   }
-  let progressHtml = '';
-  if (q.total && q.total > 1) progressHtml = `<span class="pill steps">🔢 ${q.total} этап.</span>`;
-  return `<div class="pill-row quest-meta-pills"><span class="pill diff-${diffKey}">${dm.label}</span>${timeHtml}${progressHtml}</div>`;
-}
-
-function questStageProgress(q, lockedByOtherRaid=false, renderIndex=-1){
-  const total = Math.max(1, Number(q.total) || 1);
-  const progress = Math.min(total, Math.max(0, Number(q.progress) || 0));
-  const pct = Math.min(100, progress / total * 100);
-  const points = Array.from({length: total}, (_, i) => `<span class="quest-stage-point ${i < progress ? 'done' : ''}"><i></i></span>`).join('');
-  return `<div class="quest-progress-block"><div class="quest-progress-head"><span>Прогресс этапов</span><span>${progress}/${total}</span></div><div class="quest-stage-points">${points}</div><div class="quest-progress-row"><div class="quest-stage-bar"><span style="width:${pct}%"></span></div><div class="quest-progress-action"><button class="btn" data-step="${renderIndex}" ${lockedByOtherRaid || progress >= total ? 'disabled':''}>+1 шаг</button></div></div></div>`;
+  return `<div class="pill-row quest-meta-pills"><span class="pill diff-${diffKey}">${dm.label}</span>${timeHtml}</div>`;
 }
 
 function questBadgeRow(q){ return questMetaRow(q); }
@@ -4258,7 +4247,7 @@ plannedRaids.forEach(({ q, idx })=>{
 const div = document.createElement("div");
 div.className = "quest quest-raid diff-" + (q.difficulty||"normal");
 div.innerHTML = `
-<div class="qh"><span class="title">${q.icon || "👹"} ${escapeHtml(q.title)} <span class="badge badge-raid">РЕЙД</span>${q.source === "ai" ? ' <span class="badge ai">AI</span>' : ""}</span><span class="qid">#${String(q.id).padStart(3,"0")}</span></div>
+<div class="qh"><span class="title">${q.icon || "👹"} ${escapeHtml(q.title)} <span class="badge badge-raid">РЕЙД</span>${q.source === "ai" ? ' <span class="badge ai">AI</span>' : ""}</span><span class="qid">#${formatQuestId(q.id)}</span></div>
 ${questMetaRow(q)}
 <div class="quest-desc"><div class="quest-section-title">Описание:</div><div class="quest-desc-text">${escapeHtml(q.desc)}</div></div>
 ${rewardPills(q.reward)}
@@ -4298,7 +4287,6 @@ const div = document.createElement("div");
 const isRaid = q.type === "рейд";
 const lockedByOtherRaid = state.raidActive && !isRaid;
 const raidExpired = isRaid && typeof QuestCore !== "undefined" && typeof QuestCore.isRaidTimeExpired === "function" && QuestCore.isRaidTimeExpired(q);
-const progressHtml = questStageProgress(q, lockedByOtherRaid, idx);
 const bonusNote = q.bonus ? q.bonus.desc : (q.bonusPerExtra ? q.bonusPerExtra.desc : "");
 let actionsHtml;
 if (isRaid) {
@@ -4327,23 +4315,13 @@ ${q.bonus ? `<button class="btn gold" data-bonus="${idx}" ${lockedByOtherRaid ? 
 }
 div.className = "quest" + (isRaid ? " quest-raid" : "") + " diff-" + (q.difficulty||"normal");
 div.innerHTML = `
-<div class="qh"><span class="title">${q.icon} ${escapeHtml(q.title)}${isRaid ? ' <span class="badge badge-raid">РЕЙД</span>' : ""}${q.source === "ai" ? ' <span class="badge ai">AI</span>' : ""}${raidExpired ? ' <span class="badge" style="border-color:var(--red);color:var(--red)">время вышло</span>' : ""}</span><span class="qid">#${String(q.id).padStart(3,"0")}</span></div>
+<div class="qh"><span class="title">${q.icon} ${escapeHtml(q.title)}${isRaid ? ' <span class="badge badge-raid">РЕЙД</span>' : ""}${q.source === "ai" ? ' <span class="badge ai">AI</span>' : ""}${raidExpired ? ' <span class="badge" style="border-color:var(--red);color:var(--red)">время вышло</span>' : ""}</span><span class="qid">#${formatQuestId(q.id)}</span></div>
 ${questMetaRow(q)}
 <div class="quest-desc"><div class="quest-section-title">Описание:</div><div class="quest-desc-text">${escapeHtml(q.desc)}</div></div>
-${progressHtml}
 ${rewardPills(q.reward)}
 ${bonusNote ? `<div class="bonus-note">🎁 ${bonusNote}</div>` : ""}
 ${actionsHtml}
 `;
-const stepBtn = div.querySelector("[data-step]");
-if(stepBtn) {
-stepBtn.addEventListener("click", async ()=>{
-QuestCore.advanceStep(idx);
-stepBtn.classList.add('step-flash');
-setTimeout(() => stepBtn.classList.remove('step-flash'), 500);
-persist(); renderAll();
-});
-}
 const completeBtn = div.querySelector("[data-complete]");
 if (completeBtn) completeBtn.addEventListener("click", ()=> completeQuest(idx, false));
 const bonusBtn = div.querySelector("[data-bonus]");
@@ -4411,7 +4389,7 @@ last10.forEach(q=>{
 const div = document.createElement("div");
 div.className = "sub";
 div.style.padding = "3px 0";
-div.textContent = `${q.icon} ${q.title}`;
+div.textContent = `#${formatQuestId(q.id)} ${q.icon} ${q.title}`;
 done.appendChild(div);
 });
 if(state.quests.completed.length > 10) {
@@ -4845,7 +4823,7 @@ try {
     setTimeout(() => header.classList.remove('reward-flash'), 700);
   }
 } catch (_) {}
-(result.events || []).forEach(ev => logEvent(ev.type, ev.icon, ev.text));
+(result.events || []).forEach(ev => logEvent(ev.type, ev.icon, ev.text, ev.meta));
 if (typeof syncAchievements === 'function') syncAchievements();
 if (result.q.type === "рейд") {
   if (raidTimerInterval) { clearInterval(raidTimerInterval); raidTimerInterval = null; }
@@ -4903,16 +4881,14 @@ return Array.from(document.querySelectorAll("#qNewSkillsPick input:checked")).ma
 function updatePreview(){
 const difficulty = document.getElementById("qNewDifficulty");
 const minutes = document.getElementById("qNewMinutes");
-const steps = document.getElementById("qNewSteps");
 const desc = document.getElementById("qNewDesc");
 const preview = document.getElementById("qNewPreview");
-if (!difficulty || !minutes || !steps || !desc || !preview) return;
+if (!difficulty || !minutes || !desc || !preview) return;
 const diff = difficulty.value;
 const min = Number(minutes.value) || 0;
-const stp = Number(steps.value) || 1;
 const dsc = desc.value;
 const skills = selectedSkills();
-const r = computeQuestReward(diff, min, stp, skills, dsc);
+const r = computeQuestReward(diff, min, skills, dsc);
 const skillsStr = Object.entries(r.skills).map(([k,v])=>`+${v} ${k}`).join(" · ");
 const descNote = r.descBonus > 0
 ? ` <span class="muted">(вкл. +${r.descBonus} XP за подробное описание${r.descBonus>=DESC_XP_CAP ? ", максимум" : ""})</span>`
@@ -4931,7 +4907,7 @@ if (resetBtn) resetBtn.addEventListener("click", () => {
 clearNewQuestForm();
 toast("Параметры квеста сброшены");
 });
-["qNewDifficulty","qNewMinutes","qNewSteps"].forEach(id=>{
+["qNewDifficulty","qNewMinutes"].forEach(id=>{
 const el = document.getElementById(id);
 if (el) {
 el.addEventListener("input", updatePreview);
@@ -4959,8 +4935,7 @@ const desc = document.getElementById("qNewDesc");
 const type = document.getElementById("qNewType");
 const difficulty = document.getElementById("qNewDifficulty");
 const minutes = document.getElementById("qNewMinutes");
-const steps = document.getElementById("qNewSteps");
-if (!title || !desc || !type || !difficulty || !minutes || !steps) return null;
+if (!title || !desc || !type || !difficulty || !minutes) return null;
 const titleVal = title.value.trim();
 if(!titleVal){ toast("Укажи название квеста"); return null; }
 const descVal = desc.value.trim();
@@ -4970,14 +4945,12 @@ let minutesVal = Number(minutes.value) || 0;
 if (typeVal === 'рейд') {
   minutesVal = Math.min(RAID_MAX_MINUTES, Math.max(1, minutesVal));
 }
-const stepsVal = Math.max(1, Number(steps.value) || 1);
 const skills = selectedSkills();
-let reward = computeQuestReward(difficultyVal, minutesVal, stepsVal, skills, descVal);
+let reward = computeQuestReward(difficultyVal, minutesVal, skills, descVal);
 if (pendingQuestItems.length) reward.items = pendingQuestItems.map(it => ({...it}));
 const q = {
-id: null, icon: typeVal==="рейд" ? "👹" : "📜", title: `«${titleVal}»`,
+icon: typeVal==="рейд" ? "👹" : "📜", title: `«${titleVal}»`,
 desc: descVal, type: typeVal, difficulty: difficultyVal, estMinutes: minutesVal || undefined,
-total: stepsVal > 1 ? stepsVal : undefined, progress: stepsVal > 1 ? 0 : undefined,
 reward
 };
 return q;
@@ -5036,13 +5009,11 @@ function clearNewQuestForm(){
 const title = document.getElementById("qNewTitle");
 const desc = document.getElementById("qNewDesc");
 const minutes = document.getElementById("qNewMinutes");
-const steps = document.getElementById("qNewSteps");
 const difficulty = document.getElementById("qNewDifficulty");
 const type = document.getElementById("qNewType");
 if (title) title.value = "";
 if (desc) desc.value = "";
 if (minutes) minutes.value = "30";
-if (steps) steps.value = "1";
 if (difficulty) difficulty.value = "normal";
 if (type) type.value = "обычный";
 document.querySelectorAll("#qNewSkillsPick input[type=checkbox]").forEach(cb=> { cb.checked=false; cb.closest(".skill-pick-label").classList.remove("picked"); });
@@ -8709,7 +8680,7 @@ if (elXP) elXP.textContent = state.todayStats.xp;
 if (elActivity) elActivity.textContent = formatActivityDuration(state.todayStats.activitySeconds);
 }
 
-function dashQuestHtml(q, showProgress){
+function dashQuestHtml(q){
     const dm = diffMeta(q.difficulty);
     let timeHtml = '';
     if (q.estMinutes) {
@@ -8717,20 +8688,13 @@ function dashQuestHtml(q, showProgress){
         const minutes = q.estMinutes % 60;
         timeHtml = `<span class="pill time">⏱ ${hours}ч ${minutes}м</span>`;
     }
-    let progressHtml = '';
-    if (q.total && q.total > 1 && showProgress) {
-        progressHtml = `<span class="pill steps">🔢 ${q.progress||0}/${q.total}</span>`;
-    } else if (q.total && q.total > 1) {
-        progressHtml = `<span class="pill steps">🔢 ${q.total} этап.</span>`;
-    }
     const diffKey = safeDifficulty(q.difficulty);
     return `
     <div class="quest diff-${diffKey}">
-        <div class="qh"><span class="title">${escapeHtml(q.icon||'')} ${escapeHtml(q.title)}</span></div>
+        <div class="qh"><span class="title">${escapeHtml(q.icon||'')} ${escapeHtml(q.title)}</span><span class="qid">#${formatQuestId(q.id)}</span></div>
         <div class="pill-row">
             <span class="pill diff-${diffKey}">${dm.label}</span>
             ${timeHtml}
-            ${progressHtml}
             ${q.reward && q.reward.heroXP ? `<span class="pill reward-hero">⭐ +${q.reward.heroXP} XP</span>` : ''}
             ${q.reward && q.reward.coins ? `<span class="pill reward-coin">🪙 +${q.reward.coins}</span>` : ''}
         </div>
@@ -8765,19 +8729,19 @@ bossWrap.innerHTML = `
 const raidWrap = document.getElementById('dashRaid');
 if (raidWrap){
 const raid = state.quests.active.find(q => q.type === 'рейд');
-raidWrap.innerHTML = raid ? dashQuestHtml(raid, true) : `<div class="empty">Нет активного рейда</div>`;
+raidWrap.innerHTML = raid ? dashQuestHtml(raid) : `<div class="empty">Нет активного рейда</div>`;
 }
 const plannedWrap = document.getElementById('dashPlanned');
 if (plannedWrap){
 plannedWrap.innerHTML = state.quests.planned.length
-? state.quests.planned.map(q => dashQuestHtml(q, false)).join('')
+? state.quests.planned.map(q => dashQuestHtml(q)).join('')
 : `<div class="empty">Нет запланированного квеста</div>`;
 }
 const activeWrap = document.getElementById('dashActive');
 if (activeWrap){
 const activeQuests = state.quests.active.filter(q => q.type !== 'рейд');
 activeWrap.innerHTML = activeQuests.length
-? activeQuests.map(q => dashQuestHtml(q, true)).join('')
+? activeQuests.map(q => dashQuestHtml(q)).join('')
 : `<div class="empty">Нет активного квеста</div>`;
 }
 }

@@ -182,6 +182,24 @@ function migrateState(parsed, { legacyAchievements = false } = {}) {
     parsed.quests.active = Array.isArray(parsed.quests.active) ? parsed.quests.active : [];
     parsed.quests.completed = Array.isArray(parsed.quests.completed) ? parsed.quests.completed : [];
     if (parsed.quests.completed.length > QUEST_COMPLETED_MAX) parsed.quests.completed = parsed.quests.completed.slice(-QUEST_COMPLETED_MAX);
+    const questRecords = [...parsed.quests.planned, ...parsed.quests.active, ...parsed.quests.completed]
+        .filter(q => q && typeof q === 'object' && !Array.isArray(q));
+    let maxQuestId = 0;
+    questRecords.forEach(q => {
+        delete q.total;
+        delete q.progress;
+        const id = Number(q.id);
+        if (Number.isSafeInteger(id) && id > 0) {
+            q.id = id;
+            maxQuestId = Math.max(maxQuestId, id);
+        } else {
+            delete q.id;
+        }
+    });
+    parsed.nextQuestId = Math.max(1, toInt(parsed.nextQuestId, 1), maxQuestId + 1);
+    questRecords.forEach(q => {
+        if (q.id === undefined) q.id = allocateQuestId(parsed);
+    });
     if (!parsed.quests.stats || typeof parsed.quests.stats !== 'object') parsed.quests.stats = { completed:0, failed:0, aborted:0 };
     parsed.quests.stats.completed = Math.max(0, Number(parsed.quests.stats.completed) || 0);
     parsed.quests.stats.failed = Math.max(0, Number(parsed.quests.stats.failed) || 0);

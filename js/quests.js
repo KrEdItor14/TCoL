@@ -60,17 +60,7 @@ function questMetaRow(q){
     const time = hours ? (minutes ? `${hours}ч ${minutes}м` : `${hours}ч`) : `${minutes}м`;
     timeHtml = `<span class="pill time">⏱ ${time}</span>`;
   }
-  let progressHtml = '';
-  if (q.total && q.total > 1) progressHtml = `<span class="pill steps">🔢 ${q.total} этап.</span>`;
-  return `<div class="pill-row quest-meta-pills"><span class="pill diff-${diffKey}">${dm.label}</span>${timeHtml}${progressHtml}</div>`;
-}
-
-function questStageProgress(q, lockedByOtherRaid=false, renderIndex=-1){
-  const total = Math.max(1, Number(q.total) || 1);
-  const progress = Math.min(total, Math.max(0, Number(q.progress) || 0));
-  const pct = Math.min(100, progress / total * 100);
-  const points = Array.from({length: total}, (_, i) => `<span class="quest-stage-point ${i < progress ? 'done' : ''}"><i></i></span>`).join('');
-  return `<div class="quest-progress-block"><div class="quest-progress-head"><span>Прогресс этапов</span><span>${progress}/${total}</span></div><div class="quest-stage-points">${points}</div><div class="quest-progress-row"><div class="quest-stage-bar"><span style="width:${pct}%"></span></div><div class="quest-progress-action"><button class="btn" data-step="${renderIndex}" ${lockedByOtherRaid || progress >= total ? 'disabled':''}>+1 шаг</button></div></div></div>`;
+  return `<div class="pill-row quest-meta-pills"><span class="pill diff-${diffKey}">${dm.label}</span>${timeHtml}</div>`;
 }
 
 function questBadgeRow(q){ return questMetaRow(q); }
@@ -125,7 +115,7 @@ plannedRaids.forEach(({ q, idx })=>{
 const div = document.createElement("div");
 div.className = "quest quest-raid diff-" + (q.difficulty||"normal");
 div.innerHTML = `
-<div class="qh"><span class="title">${q.icon || "👹"} ${escapeHtml(q.title)} <span class="badge badge-raid">РЕЙД</span>${q.source === "ai" ? ' <span class="badge ai">AI</span>' : ""}</span><span class="qid">#${String(q.id).padStart(3,"0")}</span></div>
+<div class="qh"><span class="title">${q.icon || "👹"} ${escapeHtml(q.title)} <span class="badge badge-raid">РЕЙД</span>${q.source === "ai" ? ' <span class="badge ai">AI</span>' : ""}</span><span class="qid">#${formatQuestId(q.id)}</span></div>
 ${questMetaRow(q)}
 <div class="quest-desc"><div class="quest-section-title">Описание:</div><div class="quest-desc-text">${escapeHtml(q.desc)}</div></div>
 ${rewardPills(q.reward)}
@@ -165,7 +155,6 @@ const div = document.createElement("div");
 const isRaid = q.type === "рейд";
 const lockedByOtherRaid = state.raidActive && !isRaid;
 const raidExpired = isRaid && typeof QuestCore !== "undefined" && typeof QuestCore.isRaidTimeExpired === "function" && QuestCore.isRaidTimeExpired(q);
-const progressHtml = questStageProgress(q, lockedByOtherRaid, idx);
 const bonusNote = q.bonus ? q.bonus.desc : (q.bonusPerExtra ? q.bonusPerExtra.desc : "");
 let actionsHtml;
 if (isRaid) {
@@ -194,23 +183,13 @@ ${q.bonus ? `<button class="btn gold" data-bonus="${idx}" ${lockedByOtherRaid ? 
 }
 div.className = "quest" + (isRaid ? " quest-raid" : "") + " diff-" + (q.difficulty||"normal");
 div.innerHTML = `
-<div class="qh"><span class="title">${q.icon} ${escapeHtml(q.title)}${isRaid ? ' <span class="badge badge-raid">РЕЙД</span>' : ""}${q.source === "ai" ? ' <span class="badge ai">AI</span>' : ""}${raidExpired ? ' <span class="badge" style="border-color:var(--red);color:var(--red)">время вышло</span>' : ""}</span><span class="qid">#${String(q.id).padStart(3,"0")}</span></div>
+<div class="qh"><span class="title">${q.icon} ${escapeHtml(q.title)}${isRaid ? ' <span class="badge badge-raid">РЕЙД</span>' : ""}${q.source === "ai" ? ' <span class="badge ai">AI</span>' : ""}${raidExpired ? ' <span class="badge" style="border-color:var(--red);color:var(--red)">время вышло</span>' : ""}</span><span class="qid">#${formatQuestId(q.id)}</span></div>
 ${questMetaRow(q)}
 <div class="quest-desc"><div class="quest-section-title">Описание:</div><div class="quest-desc-text">${escapeHtml(q.desc)}</div></div>
-${progressHtml}
 ${rewardPills(q.reward)}
 ${bonusNote ? `<div class="bonus-note">🎁 ${bonusNote}</div>` : ""}
 ${actionsHtml}
 `;
-const stepBtn = div.querySelector("[data-step]");
-if(stepBtn) {
-stepBtn.addEventListener("click", async ()=>{
-QuestCore.advanceStep(idx);
-stepBtn.classList.add('step-flash');
-setTimeout(() => stepBtn.classList.remove('step-flash'), 500);
-persist(); renderAll();
-});
-}
 const completeBtn = div.querySelector("[data-complete]");
 if (completeBtn) completeBtn.addEventListener("click", ()=> completeQuest(idx, false));
 const bonusBtn = div.querySelector("[data-bonus]");
@@ -278,7 +257,7 @@ last10.forEach(q=>{
 const div = document.createElement("div");
 div.className = "sub";
 div.style.padding = "3px 0";
-div.textContent = `${q.icon} ${q.title}`;
+div.textContent = `#${formatQuestId(q.id)} ${q.icon} ${q.title}`;
 done.appendChild(div);
 });
 if(state.quests.completed.length > 10) {
@@ -712,7 +691,7 @@ try {
     setTimeout(() => header.classList.remove('reward-flash'), 700);
   }
 } catch (_) {}
-(result.events || []).forEach(ev => logEvent(ev.type, ev.icon, ev.text));
+(result.events || []).forEach(ev => logEvent(ev.type, ev.icon, ev.text, ev.meta));
 if (typeof syncAchievements === 'function') syncAchievements();
 if (result.q.type === "рейд") {
   if (raidTimerInterval) { clearInterval(raidTimerInterval); raidTimerInterval = null; }
@@ -770,16 +749,14 @@ return Array.from(document.querySelectorAll("#qNewSkillsPick input:checked")).ma
 function updatePreview(){
 const difficulty = document.getElementById("qNewDifficulty");
 const minutes = document.getElementById("qNewMinutes");
-const steps = document.getElementById("qNewSteps");
 const desc = document.getElementById("qNewDesc");
 const preview = document.getElementById("qNewPreview");
-if (!difficulty || !minutes || !steps || !desc || !preview) return;
+if (!difficulty || !minutes || !desc || !preview) return;
 const diff = difficulty.value;
 const min = Number(minutes.value) || 0;
-const stp = Number(steps.value) || 1;
 const dsc = desc.value;
 const skills = selectedSkills();
-const r = computeQuestReward(diff, min, stp, skills, dsc);
+const r = computeQuestReward(diff, min, skills, dsc);
 const skillsStr = Object.entries(r.skills).map(([k,v])=>`+${v} ${k}`).join(" · ");
 const descNote = r.descBonus > 0
 ? ` <span class="muted">(вкл. +${r.descBonus} XP за подробное описание${r.descBonus>=DESC_XP_CAP ? ", максимум" : ""})</span>`
@@ -798,7 +775,7 @@ if (resetBtn) resetBtn.addEventListener("click", () => {
 clearNewQuestForm();
 toast("Параметры квеста сброшены");
 });
-["qNewDifficulty","qNewMinutes","qNewSteps"].forEach(id=>{
+["qNewDifficulty","qNewMinutes"].forEach(id=>{
 const el = document.getElementById(id);
 if (el) {
 el.addEventListener("input", updatePreview);
@@ -826,8 +803,7 @@ const desc = document.getElementById("qNewDesc");
 const type = document.getElementById("qNewType");
 const difficulty = document.getElementById("qNewDifficulty");
 const minutes = document.getElementById("qNewMinutes");
-const steps = document.getElementById("qNewSteps");
-if (!title || !desc || !type || !difficulty || !minutes || !steps) return null;
+if (!title || !desc || !type || !difficulty || !minutes) return null;
 const titleVal = title.value.trim();
 if(!titleVal){ toast("Укажи название квеста"); return null; }
 const descVal = desc.value.trim();
@@ -837,14 +813,12 @@ let minutesVal = Number(minutes.value) || 0;
 if (typeVal === 'рейд') {
   minutesVal = Math.min(RAID_MAX_MINUTES, Math.max(1, minutesVal));
 }
-const stepsVal = Math.max(1, Number(steps.value) || 1);
 const skills = selectedSkills();
-let reward = computeQuestReward(difficultyVal, minutesVal, stepsVal, skills, descVal);
+let reward = computeQuestReward(difficultyVal, minutesVal, skills, descVal);
 if (pendingQuestItems.length) reward.items = pendingQuestItems.map(it => ({...it}));
 const q = {
-id: null, icon: typeVal==="рейд" ? "👹" : "📜", title: `«${titleVal}»`,
+icon: typeVal==="рейд" ? "👹" : "📜", title: `«${titleVal}»`,
 desc: descVal, type: typeVal, difficulty: difficultyVal, estMinutes: minutesVal || undefined,
-total: stepsVal > 1 ? stepsVal : undefined, progress: stepsVal > 1 ? 0 : undefined,
 reward
 };
 return q;
@@ -903,13 +877,11 @@ function clearNewQuestForm(){
 const title = document.getElementById("qNewTitle");
 const desc = document.getElementById("qNewDesc");
 const minutes = document.getElementById("qNewMinutes");
-const steps = document.getElementById("qNewSteps");
 const difficulty = document.getElementById("qNewDifficulty");
 const type = document.getElementById("qNewType");
 if (title) title.value = "";
 if (desc) desc.value = "";
 if (minutes) minutes.value = "30";
-if (steps) steps.value = "1";
 if (difficulty) difficulty.value = "normal";
 if (type) type.value = "обычный";
 document.querySelectorAll("#qNewSkillsPick input[type=checkbox]").forEach(cb=> { cb.checked=false; cb.closest(".skill-pick-label").classList.remove("picked"); });

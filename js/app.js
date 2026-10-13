@@ -518,7 +518,7 @@ if (elXP) elXP.textContent = state.todayStats.xp;
 if (elActivity) elActivity.textContent = formatActivityDuration(state.todayStats.activitySeconds);
 }
 
-function dashQuestHtml(q, showProgress){
+function dashQuestHtml(q){
     const dm = diffMeta(q.difficulty);
     let timeHtml = '';
     if (q.estMinutes) {
@@ -526,20 +526,13 @@ function dashQuestHtml(q, showProgress){
         const minutes = q.estMinutes % 60;
         timeHtml = `<span class="pill time">⏱ ${hours}ч ${minutes}м</span>`;
     }
-    let progressHtml = '';
-    if (q.total && q.total > 1 && showProgress) {
-        progressHtml = `<span class="pill steps">🔢 ${q.progress||0}/${q.total}</span>`;
-    } else if (q.total && q.total > 1) {
-        progressHtml = `<span class="pill steps">🔢 ${q.total} этап.</span>`;
-    }
     const diffKey = safeDifficulty(q.difficulty);
     return `
     <div class="quest diff-${diffKey}">
-        <div class="qh"><span class="title">${escapeHtml(q.icon||'')} ${escapeHtml(q.title)}</span></div>
+        <div class="qh"><span class="title">${escapeHtml(q.icon||'')} ${escapeHtml(q.title)}</span><span class="qid">#${formatQuestId(q.id)}</span></div>
         <div class="pill-row">
             <span class="pill diff-${diffKey}">${dm.label}</span>
             ${timeHtml}
-            ${progressHtml}
             ${q.reward && q.reward.heroXP ? `<span class="pill reward-hero">⭐ +${q.reward.heroXP} XP</span>` : ''}
             ${q.reward && q.reward.coins ? `<span class="pill reward-coin">🪙 +${q.reward.coins}</span>` : ''}
         </div>
@@ -574,19 +567,19 @@ bossWrap.innerHTML = `
 const raidWrap = document.getElementById('dashRaid');
 if (raidWrap){
 const raid = state.quests.active.find(q => q.type === 'рейд');
-raidWrap.innerHTML = raid ? dashQuestHtml(raid, true) : `<div class="empty">Нет активного рейда</div>`;
+raidWrap.innerHTML = raid ? dashQuestHtml(raid) : `<div class="empty">Нет активного рейда</div>`;
 }
 const plannedWrap = document.getElementById('dashPlanned');
 if (plannedWrap){
 plannedWrap.innerHTML = state.quests.planned.length
-? state.quests.planned.map(q => dashQuestHtml(q, false)).join('')
+? state.quests.planned.map(q => dashQuestHtml(q)).join('')
 : `<div class="empty">Нет запланированного квеста</div>`;
 }
 const activeWrap = document.getElementById('dashActive');
 if (activeWrap){
 const activeQuests = state.quests.active.filter(q => q.type !== 'рейд');
 activeWrap.innerHTML = activeQuests.length
-? activeQuests.map(q => dashQuestHtml(q, true)).join('')
+? activeQuests.map(q => dashQuestHtml(q)).join('')
 : `<div class="empty">Нет активного квеста</div>`;
 }
 }

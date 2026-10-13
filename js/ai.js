@@ -538,28 +538,6 @@ try { return JSON.parse(cleaned); } catch {}
 return undefined;
 }
 
-function questDifficultyFromSteps(count){
-    const n = Math.max(1, Math.min(5, Number(count) || 1));
-    return ['trivial','easy','normal','hard','epic'][n - 1];
-}
-
-function questMinutesFromSteps(count){
-    const n = Math.max(1, Math.min(5, Number(count) || 1));
-    return [10, 20, 30, 45, 60][n - 1];
-}
-
-function normalizeAIQuestSteps(rawSteps, desc){
-    let steps = Array.isArray(rawSteps)
-        ? rawSteps.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim().slice(0, 180))
-        : [];
-    if (!steps.length) {
-        const len = String(desc || '').trim().length;
-        const count = len > 420 ? 4 : len > 260 ? 3 : len > 120 ? 2 : 1;
-        steps = Array.from({length: count}, (_, i) => `Этап ${i + 1}`);
-    }
-    return steps.slice(0, 5);
-}
-
 function normalizeAIQuestSkills(rawSkills){
     const valid = new Set(Array.isArray(SKILL_NAMES) ? SKILL_NAMES : []);
     const selected = Array.isArray(rawSkills)
@@ -625,7 +603,6 @@ ${AI_NO_NOTE_RULE}
 ПРАВИЛА:
 - Название короткое, выразительное, с эмодзи; не просто название бытового действия.
 - desc: 2-3 предложения; конкретно объясни задачу и ожидаемый результат.
-- steps: РОВНО 2-5 этапов. Каждый этап — самостоятельное, конкретное и проверяемое действие. Не пиши «начать/продолжить/закончить» без конкретики.
 - skills: 1-3 действительно используемых навыка.
 - Не генерируй difficulty, minutes, XP героя, монеты, rarity, condition, itemLevel, power, ID или коэффициенты — это рассчитывает игра.
 - items — только кандидаты наград и только если они логично связаны с квестом.
@@ -633,13 +610,12 @@ ${AI_NO_NOTE_RULE}
 - consumable = одноразовый реалистичный расходник с временным эффектом 15-1440 минут.
 - equipment = экипируемый предмет со слотом из списка; не указывай его rarity, condition, itemLevel или power.
 JSON:
-{"title":"название с эмодзи","desc":"описание","steps":["этап 1","этап 2"],"skills":["точное название навыка"],"items":[{"type":"material","name":"сырьё","desc":"описание"},{"type":"consumable","name":"расходник","desc":"описание","effect":"+2 к 🧘 Концентрация","modifiers":{"skillFlat":{"🧘 Концентрация":2}},"durationMinutes":30},{"type":"equipment","name":"снаряжение","desc":"описание","effect":"+1 к 🎲 Удача","modifiers":{"specialFlat":{"🎲 Удача":1}},"slot":"Аксессуар"}]}
+{"title":"название с эмодзи","desc":"описание","skills":["точное название навыка"],"items":[{"type":"material","name":"сырьё","desc":"описание"},{"type":"consumable","name":"расходник","desc":"описание","effect":"+2 к 🧘 Концентрация","modifiers":{"skillFlat":{"🧘 Концентрация":2}},"durationMinutes":30},{"type":"equipment","name":"снаряжение","desc":"описание","effect":"+1 к 🎲 Удача","modifiers":{"specialFlat":{"🎲 Удача":1}},"slot":"Аксессуар"}]}
 Верни только один JSON-объект.`;
     const prompt = `Создай один квест на тему: "${theme || 'случайное приключение'}". Сделай его выполнимым в реальной жизни и логично связанным с выбранными навыками и кандидатами наград.`;
     const result = await queryAI(prompt, systemPrompt);
-    const steps = normalizeAIQuestSteps(result?.steps, result?.desc);
     const skills = normalizeAIQuestSkills(result?.skills);
-    return { title: typeof result?.title === 'string' && result.title.trim() ? result.title.trim() : '📜 Новый квест', desc: typeof result?.desc === 'string' && result.desc.trim() ? result.desc.trim() : 'Выполни задачу последовательно и доведи её до результата.', stepDetails: steps, steps: steps.length, difficulty: questDifficultyFromSteps(steps.length), minutes: questMinutesFromSteps(steps.length), skills, items: Array.isArray(result?.items) ? result.items : [] };
+    return { title: typeof result?.title === 'string' && result.title.trim() ? result.title.trim() : '📜 Новый квест', desc: typeof result?.desc === 'string' && result.desc.trim() ? result.desc.trim() : 'Выполни задачу последовательно и доведи её до результата.', difficulty: 'normal', minutes: 30, skills, items: Array.isArray(result?.items) ? result.items : [] };
 }
 
 function normalizeGeneratedBossPhases(phases, bossType, fallbackPhases) {
@@ -885,7 +861,6 @@ const titleEl = document.getElementById('qNewTitle');
 const descEl = document.getElementById('qNewDesc');
 const diffEl = document.getElementById('qNewDifficulty');
 const minEl = document.getElementById('qNewMinutes');
-const stepEl = document.getElementById('qNewSteps');
 if (!questData || !questData.title || !questData.desc) {
     console.error('AI вернул неожиданную структуру:', questData);
     throw new Error('AI вернул ответ без полей title/desc. Попробуй ещё раз.');
@@ -894,7 +869,6 @@ if (!questData || !questData.title || !questData.desc) {
   if (descEl) descEl.value = questData.desc;
   if (diffEl) diffEl.value = questData.difficulty || 'normal';
   if (minEl) minEl.value = questData.minutes || 30;
-  if (stepEl) stepEl.value = questData.steps || 1;
 if (questData.skills && Array.isArray(questData.skills)) {
 document.querySelectorAll('#qNewSkillsPick input[type=checkbox]').forEach(cb => {
 cb.checked = questData.skills.includes(cb.value);
