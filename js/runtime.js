@@ -8967,6 +8967,9 @@ applyTheme(state.settings.theme || 'nature');
 // Сначала запускаем сам интерфейс. AI не должен блокировать вкладки и кнопки.
 try { renderTabs(); } catch (e) { console.error('renderTabs failed:', e); }
 try { renderAll(); } catch (e) { console.error('renderAll failed:', e); toast('⚠️ Ошибка отрисовки интерфейса: ' + e.message); }
+if (typeof initEnumPickers === 'function') {
+  try { initEnumPickers(); } catch (e) { console.error('initEnumPickers failed:', e); }
+}
 if (!profileInitialized) showFirstLaunchNicknameForm();
 startActivityTracking();
 
