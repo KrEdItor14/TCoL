@@ -167,4 +167,65 @@ const closableOverlay = document.body.children.at(-1);
 closableOverlay.findByClass('enum-picker-modal-close').click();
 assert.ok(!document.body.children.includes(closableOverlay), 'close button must close the modal');
 
+const pickerElements = [
+  'gearNewRarity', 'gearNewCondition', 'gearNewSlot',
+  'qNewType', 'qNewDifficulty', 'shopNewRarity'
+];
+for (const id of pickerElements) {
+  elements.set(id, new FakeElement('input'));
+  elements.set(`${id}Picker`, new FakeElement('div'));
+}
+context.EQUIP_SLOTS = ['Голова'];
+context.ACCESSORY_SLOTS = ['Амулет'];
+context.ALL_SLOTS = ['Голова', 'Амулет'];
+context.SLOT_ICON = { Голова: '🪖', Амулет: '📿' };
+vm.runInContext(fs.readFileSync('js/init-pickers.js', 'utf8'), context, { filename: 'js/init-pickers.js' });
+vm.runInContext('initEnumPickers()', context);
+
+const getPicker = targetId => vm.runInContext(`EnumPicker.get(${JSON.stringify(targetId)})`, context);
+const rarityPicker = getPicker('gearNewRarity');
+const conditionPicker = getPicker('gearNewCondition');
+const difficultyPicker = getPicker('qNewDifficulty');
+const shopRarityPicker = getPicker('shopNewRarity');
+const slotPicker = getPicker('gearNewSlot');
+const typePicker = getPicker('qNewType');
+
+for (const pickerToCheck of [rarityPicker, conditionPicker, difficultyPicker, shopRarityPicker]) {
+  assert.ok(pickerToCheck.container.findByClass('enum-picker-trigger'), 'rarity, condition, difficulty and shop rarity must use modal triggers');
+  assert.strictEqual(pickerToCheck.container.findByClass('enum-picker-row'), null, 'modal selectors must not render chip rows');
+}
+for (const pickerToCheck of [slotPicker, typePicker]) {
+  assert.ok(pickerToCheck.container.findByClass('enum-picker-row'), 'slots and quest type must remain chip rows');
+  assert.strictEqual(pickerToCheck.container.findByClass('enum-picker-trigger'), null, 'chip selectors must not render modal triggers');
+}
+const typeChips = typePicker.container.querySelectorAll('.enum-picker-chip');
+assert.ok(typeChips[0].className.includes('active'), 'quest type must keep its green active chip state');
+typeChips[1].click();
+assert.ok(typeChips[1].className.includes('active'), 'selecting quest type must keep the active chip state');
+
+rarityPicker.container.findByClass('enum-picker-trigger').click();
+const configuredRarityOptions = document.body.children.at(-1).querySelectorAll('.enum-picker-option');
+assert.deepStrictEqual(configuredRarityOptions.map(option => option.className.match(/enum-picker-option-([^ ]+)/)?.[1]), [
+  'common', 'uncommon', 'rare', 'epic', 'legendary', 'unique', 'mythical'
+]);
+assert.deepStrictEqual(configuredRarityOptions.map(option => option.children.at(-1).textContent), [
+  'Обычная', 'Необычная', 'Редкая', 'Эпическая', 'Легендарная', 'Уникальная', 'Мифическая'
+]);
+assert.strictEqual(rarityPicker.container.findByClass('enum-picker-trigger').className.includes('enum-picker-trigger-common'), true);
+document.body.children.at(-1).remove();
+
+conditionPicker.container.findByClass('enum-picker-trigger').click();
+const configuredConditionOptions = document.body.children.at(-1).querySelectorAll('.enum-picker-option');
+assert.deepStrictEqual(configuredConditionOptions.map(option => option.className.match(/enum-picker-option-([^ ]+)/)?.[1]), [
+  'broken', 'damaged', 'worn', 'good', 'reliable', 'excellent', 'perfect'
+]);
+document.body.children.at(-1).remove();
+
+difficultyPicker.container.findByClass('enum-picker-trigger').click();
+const configuredDifficultyOptions = document.body.children.at(-1).querySelectorAll('.enum-picker-option');
+assert.deepStrictEqual(configuredDifficultyOptions.map(option => option.className.match(/enum-picker-option-([^ ]+)/)?.[1]), [
+  'difficulty-trivial', 'difficulty-easy', 'difficulty-normal', 'difficulty-hard', 'difficulty-epic'
+]);
+document.body.children.at(-1).remove();
+
 console.log('enum-picker: PASS');

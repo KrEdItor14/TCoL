@@ -40,6 +40,7 @@ const EnumPicker = (() => {
     function renderTrigger() {
       const option = getOption(currentValue);
       if (!trigger || !option) return;
+      trigger.className = `btn enum-picker-trigger${option.tone ? ` enum-picker-trigger-${option.tone}` : ''}`;
       while (trigger.firstChild) trigger.removeChild(trigger.firstChild);
       appendOptionLabel(trigger, option);
     }

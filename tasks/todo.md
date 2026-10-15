@@ -26,13 +26,13 @@
 **Description:** Configure equipment rarity and condition, quest difficulty, and shop rarity to use the new modal variant; attach semantic colour identifiers and CSS outlines. Preserve slot and quest-type chips, including the existing green active fill.
 
 **Acceptance criteria:**
-- [ ] All four required fields use the modal variant, with exact icons, labels, and required outline colours.
-- [ ] Option text remains in the interface foreground colour.
-- [ ] Equipment slots and quest type remain chip pickers, and their active buttons remain green-filled.
+- [x] All four required fields use the modal variant, with exact icons, labels, and required outline colours.
+- [x] Option text remains in the interface foreground colour.
+- [x] Equipment slots and quest type remain chip pickers, and their active buttons remain green-filled.
 
 **Verification:**
-- [ ] Tests pass: `node tests/enum-picker.test.js && node tests/settings-ui.test.js`
-- [ ] Manual check: inspect all three forms at 320 px and desktop widths; select every value class at least once.
+- [x] Tests pass: `node tests/enum-picker.test.js && node tests/settings-ui.test.js`
+- [x] Manual check: inspect all three forms at 320 px and desktop widths; select every value class at least once.
 
 **Dependencies:** Task 1
 
@@ -45,9 +45,9 @@
 
 ## Checkpoint: Interactive selector
 
-- [ ] `node tests/enum-picker.test.js && node tests/settings-ui.test.js` passes.
-- [ ] Keyboard focus, close button, overlay dismissal, touch selection, and 320 px layout are verified manually.
-- [ ] Existing chip selectors still have a green-filled active state.
+- [x] `node tests/enum-picker.test.js && node tests/settings-ui.test.js` passes.
+- [x] Keyboard focus, close button, overlay dismissal, touch selection, and 320 px layout are verified manually.
+- [x] Existing chip selectors still have a green-filled active state.
 
 ## Task 3: Verify full application and sync generated bundles
 
