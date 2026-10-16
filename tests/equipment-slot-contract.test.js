@@ -84,6 +84,8 @@ const generatedRuntimeFiles = [
 ];
 for (const file of generatedRuntimeFiles) {
   const code = fs.readFileSync(file, 'utf8');
+  assert.match(code, /if\s*\(typeof initEnumPickers === ['"]function['"]\)\s*\{\s*try\s*\{\s*initEnumPickers\(\);\s*\}\s*catch\s*\(e\)\s*\{\s*console\.error\(['"]initEnumPickers failed:['"],\s*e\);\s*\}\s*\}/,
+    `${file} must initialize enum pickers during startup`);
   const match = code.match(/const EQUIP_SLOTS = (\[[^;]+\]);/);
   assert.ok(match, `${file} must declare EQUIP_SLOTS`);
   assert.deepStrictEqual([...vm.runInNewContext(match[1])], expectedEquipSlots,
