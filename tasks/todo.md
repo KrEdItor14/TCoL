@@ -1,90 +1,98 @@
-# Tasks: Цветные селекторы перечислений
+# Tasks: Слот «Лицо» и безопасная AI-генерация
 
-## Task 1: Add modal EnumPicker behavior
+## Task 1: Зафиксировать strict AI slot behavior тестами
 
-**Description:** Extend `EnumPicker` with a `modal` variant that renders a trigger and opens an accessible selection modal, while leaving the existing chip variant as its default behavior.
+**Description:** Создать focused VM-тест с контролируемым `queryAI`, который задаёт contract для face allowlist, одной retry, отказа после двух нерелевантных результатов, slot authority и craft `Плащ` mapping.
 
 **Acceptance criteria:**
-- [x] A modal trigger displays the current option icon and label.
-- [x] The modal includes a title, close button, overlay dismissal, focus on open, and `aria-pressed` on every option.
-- [x] Choosing an option updates the original hidden input, sends one bubbling `change` event, updates the trigger, and closes the modal.
+- [x] Тест падает до реализации при face result `Шлем` или другой нерелевантной вещи.
+- [x] Тест проверяет один вызов для валидного face-item, два вызова для retry и rejection после двух невалидных результатов.
+- [x] Тест фиксирует `slot: 'Лицо'` у принятого face result и отсутствие retry для другого slot.
+- [x] Тест фиксирует `Плащ → Верхняя одежда` в craft normalizer и prompt, без `Тело верхняя`.
 
 **Verification:**
-- [x] Tests pass: `node tests/enum-picker.test.js`
-- [ ] Manual check: open, choose, close, and overlay-dismiss a modal selector with keyboard and touch.
+- [x] Tests fail first: `node tests/ai-equipment-slots.test.js`
 
 **Dependencies:** None
 
 **Files likely touched:**
-- `js/enum-picker.js`
-- `tests/enum-picker.test.js`
+- `tests/ai-equipment-slots.test.js`
 
-**Estimated scope:** Small, 2 files
+**Estimated scope:** Medium, 1 file
 
-## Task 2: Configure coloured modal fields without changing chips
+## Task 2: Ограничить AI-экипировку для «Лицо»
 
-**Description:** Configure equipment rarity and condition, quest difficulty, and shop rarity to use the new modal variant; attach semantic colour identifiers and CSS outlines. Preserve slot and quest-type chips, including the existing green active fill.
+**Description:** Добавить allowlist и одну корректирующую retry в `generateEquipmentWithAI()`. Только accepted result может попасть в форму, с гарантированным `slot: 'Лицо'`.
 
 **Acceptance criteria:**
-- [x] All four required fields use the modal variant, with exact icons, labels, and required outline colours.
-- [x] Option text remains in the interface foreground colour.
-- [x] Equipment slots and quest type remain chip pickers, and their active buttons remain green-filled.
+- [x] `Лицо` принимает только очки, солнцезащитные очки, маски, визоры, балаклавы и защитные щитки.
+- [x] Первый нерелевантный result запускает ровно одну retry, второй приводит к понятному rejection.
+- [x] Другие slot hints не проходят face validation и не получают retry.
 
 **Verification:**
-- [x] Tests pass: `node tests/enum-picker.test.js && node tests/settings-ui.test.js`
-- [x] Manual check: inspect all three forms at 320 px and desktop widths; select every value class at least once.
+- [x] Tests pass: `node tests/ai-equipment-slots.test.js`
+- [x] Tests pass: `node tests/ai-flow.test.js`
 
 **Dependencies:** Task 1
 
 **Files likely touched:**
-- `js/init-pickers.js`
-- `css/components.css`
-- `css/mobile.css` (only if a responsive correction is necessary)
+- `js/equipment.js`
+- `tests/ai-equipment-slots.test.js`
 
-**Estimated scope:** Small, 2-3 files
+**Estimated scope:** Small, 2 files
 
-## Checkpoint: Interactive selector
+## Task 3: Канонизировать AI-копку плащей
 
-- [x] `node tests/enum-picker.test.js && node tests/settings-ui.test.js` passes.
-- [x] Keyboard focus, close button, overlay dismissal, touch selection, and 320 px layout are verified manually.
-- [x] Existing chip selectors still have a green-filled active state.
-
-## Task 3: Verify full application and sync generated bundles
-
-**Description:** Run the complete test suite, regenerate the Capacitor web copies from sources, and confirm the generated selectors match the checked source.
+**Description:** Обновить craft category-to-slot mapping и prompt, чтобы `Плащ` всегда создавался в `Верхняя одежда` и AI больше не видел устаревшее название.
 
 **Acceptance criteria:**
-- [ ] The full regression suite completes successfully. Blocked by pre-existing failures listed below.
-- [x] `www/` and `android/app/src/main/assets/public/` are regenerated only by `npm run prepare:web`.
-- [x] No generated bundle changes outside the selector sync were introduced by this work.
+- [x] `normalizeCraftRecipes()` normalizes category `Плащ` to `slot: 'Верхняя одежда'`.
+- [x] Craft system prompt содержит `Плащ→Верхняя одежда` и не содержит `Тело верхняя`.
+- [x] Остальные craft category mappings не меняются.
 
 **Verification:**
-- [ ] Tests pass: `npm run test:all` is blocked by `SLOT_MAP_OLD_TO_NEW is not defined` in `tests/storage-reliability.test.js` and an AI quota test environment mismatch involving `PROXY_SECRET`.
-- [x] Build/sync succeeds: `npm run prepare:web`
-- [x] Manual check: generated `www/js/enum-picker.js`, `www/js/init-pickers.js`, and `www/css/components.css` match source behavior by SHA-256 comparison.
+- [x] Tests pass: `node tests/ai-equipment-slots.test.js`
+- [x] Tests pass: `node tests/equipment-slot-contract.test.js`
 
-**Dependencies:** Task 2 and interactive-selector checkpoint
+**Dependencies:** Task 1
 
 **Files likely touched:**
-- `www/index.html`
-- `www/css/components.css`
-- `www/css/mobile.css` (if source changed)
-- `www/js/enum-picker.js`
-- `www/js/init-pickers.js`
-- `android/app/src/main/assets/public/` generated mirrors
+- `js/ai.js`
+- `tests/ai-equipment-slots.test.js`
 
-**Estimated scope:** Medium, generated copies
+**Estimated scope:** Small, 2 files
+
+## Checkpoint: AI slot safety
+
+- [x] Face allowlist, retry, rejection, forced slot и non-face regression проходят.
+- [x] Craft mapping and prompt используют только `Верхняя одежда`.
+- [x] AI transport и existing slot contract остаются зелёными.
+
+## Task 4: Пересобрать distribution и выполнить регрессии
+
+**Description:** Сгенерировать runtime и Capacitor-копии из source-модулей после focused-проверок, затем выполнить полный test suite.
+
+**Acceptance criteria:**
+- [x] `js/runtime.js` пересобран через `build-runtime.bat` и содержит face policy и canonical craft mapping.
+- [x] `www/` и Android public assets обновлены через `npm run prepare:web`.
+- [x] Полный набор регрессий проходит.
+
+**Verification:**
+- [x] Build succeeds: `cmd /c "echo.|build-runtime.bat"`
+- [x] Build succeeds: `npm run prepare:web`
+- [x] Tests pass: `npm run test:all`
+
+**Dependencies:** Tasks 2-3 and AI-slot-safety checkpoint
+
+**Files likely touched:**
+- `js/runtime.js`
+- `www/`
+- `android/app/src/main/assets/public/`
+
+**Estimated scope:** Medium, generated files
 
 ## Checkpoint: Complete
 
-- [x] All selector success criteria in `SPEC-enum-picker.md` are met.
-- [ ] `npm run test:all` passes; currently blocked by unrelated pre-existing test failures documented above.
-- [x] Generated assets were regenerated by `npm run prepare:web`, not edited manually.
-- [x] Review confirms selector changes are limited to intended source and generated files.
-
-## Verification notes
-
-- Focused UI tests pass: `node tests/enum-picker.test.js`, `node tests/settings-ui.test.js`, `node tests/html-structure.test.js`.
-- Browser verification passed at desktop and 320 px: modal opens, colored outlines render, focus starts on close, options select, and chips remain green-filled.
-- Full suite is currently blocked by pre-existing unrelated failures: `SLOT_MAP_OLD_TO_NEW is not defined` in `tests/storage-reliability.test.js`; AI quota flow also expects unavailable `PROXY_SECRET`.
-- `npm run prepare:web` completed successfully; selected source and generated files match by SHA-256.
+- [x] Все success criteria из `SPEC-face-slot-ai.md` выполнены.
+- [x] Generated-файлы созданы штатными командами, не вручную.
+- [x] Эта работа не добавила несвязанных изменений; исходные незакоммиченные правки пользователя сохранены.

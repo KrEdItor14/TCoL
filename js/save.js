@@ -223,22 +223,13 @@ function migrateState(parsed, { legacyAchievements = false } = {}) {
         !Object.prototype.hasOwnProperty.call(AI_THEME_OPTIONS, parsed.settings.aiTheme)) {
       parsed.settings.aiTheme = 'real_world';
     }
-    // Hybrid AI (free limit + own key)
-    if (parsed.settings.aiMode !== 'free' && parsed.settings.aiMode !== 'own_key') {
-      parsed.settings.aiMode = 'free';
-    }
     if (parsed.settings.aiOwnKey !== null && typeof parsed.settings.aiOwnKey !== 'string') {
       parsed.settings.aiOwnKey = null;
     }
-    if (typeof parsed.settings.aiFreeUsed !== 'number' || parsed.settings.aiFreeUsed < 0) {
-      parsed.settings.aiFreeUsed = 0;
-    }
-    if (typeof parsed.settings.aiFreeWindowStart !== 'number') {
-      parsed.settings.aiFreeWindowStart = 0;
-    }
-    if (typeof parsed.settings.aiDailyFreeLimit !== 'number' || parsed.settings.aiDailyFreeLimit < 1) {
-      parsed.settings.aiDailyFreeLimit = 10;
-    }
+    delete parsed.settings.aiMode;
+    delete parsed.settings.aiFreeUsed;
+    delete parsed.settings.aiFreeWindowStart;
+    delete parsed.settings.aiDailyFreeLimit;
     parsed.settings.aiProvider = 'tooken';
     if (typeof AI_MODEL_OPTIONS === 'undefined' ||
         !Object.prototype.hasOwnProperty.call(AI_MODEL_OPTIONS, parsed.settings.aiModel)) {
@@ -348,7 +339,7 @@ function migrateState(parsed, { legacyAchievements = false } = {}) {
     parsed.perksUnlocked=parsed.perksUnlocked.filter(p=>!RETIRED_PERK_NAMES.includes(typeof p==='string'?p:p.name));
     parsed.perksAvailable=parsed.perksAvailable.filter(p=>!RETIRED_PERK_NAMES.includes(p.name));
     if (!parsed.accessories || typeof parsed.accessories!=='object') {
-        const freshEquipment={'Голова':null,'Тело':null,'Тело верхняя':null,'Ноги':null,'Ступни':null,'Обувь':null,'Рюкзак':null};
+        const freshEquipment={'Голова':null,'Лицо':null,'Тело':null,'Верхняя одежда':null,'Перчатки':null,'Ноги':null,'Ступни':null,'Обувь':null,'Рюкзак':null};
         const freshAccessories={'Запястье (левое)':[],'Запястье (правое)':[],'Пальцы':[],'Шея':[],'Гаджет':[]};
         const legacy=[];
         if (parsed.equipment && typeof parsed.equipment==='object') Object.entries(parsed.equipment).forEach(([oldSlot,item])=>{if(item) legacy.push({...item,__oldSlot:oldSlot});});
@@ -361,11 +352,24 @@ function migrateState(parsed, { legacyAchievements = false } = {}) {
         });
         parsed.equipment=freshEquipment; parsed.accessories=freshAccessories; delete parsed.gearEveryday; delete parsed.gearSpecial;
     }
-    const equipmentDefaults={'Голова':null,'Тело':null,'Тело верхняя':null,'Ноги':null,'Ступни':null,'Обувь':null,'Рюкзак':null};
+    const equipmentDefaults={'Голова':null,'Лицо':null,'Тело':null,'Верхняя одежда':null,'Перчатки':null,'Ноги':null,'Ступни':null,'Обувь':null,'Рюкзак':null};
     const accessoryDefaults={'Запястье (левое)':[],'Запястье (правое)':[],'Пальцы':[],'Шея':[],'Гаджет':[]};
-    parsed.equipment={...equipmentDefaults,...(parsed.equipment||{})}; parsed.accessories={...accessoryDefaults,...(parsed.accessories||{})};
+    const normalizeSlot = slot => SLOT_MAP_OLD_TO_NEW[slot] || slot;
+    const normalized = {};
+    const equipmentEntries = Object.entries(parsed.equipment || {});
+    const canonicalEntries = equipmentEntries.filter(([oldSlot]) => normalizeSlot(oldSlot) === oldSlot);
+    const legacyEntries = equipmentEntries.filter(([oldSlot]) => normalizeSlot(oldSlot) !== oldSlot);
+    [...canonicalEntries, ...legacyEntries].forEach(([oldSlot, item]) => {
+        const newSlot = normalizeSlot(oldSlot);
+        if (item && !isAccessorySlot(newSlot)) {
+            if (!normalized[newSlot]) normalized[newSlot] = {...item, slot: newSlot};
+            else parsed.inventory.push({id:'item_migrated_'+Date.now()+'_'+Math.floor(Math.random()*10000),...item,slot:newSlot,type:'equipment',qty:1,quote:'',source:'legacy'});
+        }
+    });
+    parsed.equipment = {...equipmentDefaults, ...normalized};
+    parsed.accessories={...accessoryDefaults,...(parsed.accessories||{})};
     Object.keys(parsed.accessories).forEach(slot=>{if(!Array.isArray(parsed.accessories[slot])) parsed.accessories[slot]=[];});
-    parsed.inventory.forEach(it=>{if(!it||typeof it!=='object')return; if(it.type==='equipment'){if(it.slot&&!ALL_SLOTS.includes(it.slot))it.slot=SLOT_MAP_OLD_TO_NEW[it.slot]||'Пальцы'; it.condition=EQUIPMENT_CONDITION_ALIASES[it.condition]||'good'; it.itemLevel=Math.max(1, Math.floor(Number(it.itemLevel)||Number(parsed.character?.level)||1));} if(!it.qty||it.qty<1)it.qty=1;});
+    parsed.inventory.forEach(it=>{if(!it||typeof it!=='object')return; if(it.type==='equipment'){const oldSlot = it.slot; it.slot = normalizeSlot(oldSlot); it.condition=EQUIPMENT_CONDITION_ALIASES[it.condition]||'good'; it.itemLevel=Math.max(1, Math.floor(Number(it.itemLevel)||Number(parsed.character?.level)||1));} if(!it.qty||it.qty<1)it.qty=1;});
     const normalizeEquipmentPower = item => {
         if (!item || item.type === 'material' || item.type === 'consumable') return;
         item.condition = EQUIPMENT_CONDITION_ALIASES[item.condition] || 'good';

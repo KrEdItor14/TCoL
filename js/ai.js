@@ -87,84 +87,6 @@ function setAIModel(model){
 
 const PROXY_URL = 'https://comfortable-flounder-3259.kreditor14.deno.net';
 
-const PROXY_SECRET = 'credo-2026-xyz';
-
-const AI_FREE_LIMIT_DEFAULT = 10;
-const AI_FREE_QUOTA_POLICY = 'rolling-24h-10';
-const AI_FREE_QUOTA_CACHE_KEY = 'tc_ai_free_quota_cache';
-
-function readCachedAIServerQuota() {
-  try {
-    if (typeof localStorage === 'undefined') return null;
-    const cached = JSON.parse(localStorage.getItem(AI_FREE_QUOTA_CACHE_KEY) || 'null');
-    if (!cached || cached.policy !== AI_FREE_QUOTA_POLICY ||
-        !Number.isFinite(Number(cached.remaining)) || !Number.isFinite(Number(cached.limit))) return null;
-    return { ...cached, remaining: Math.max(0, Number(cached.remaining)), limit: AI_FREE_LIMIT_DEFAULT, server: false, cached: true };
-  } catch (error) {
-    console.warn('Could not read cached AI quota status:', error);
-    return null;
-  }
-}
-
-let aiServerQuota = readCachedAIServerQuota();
-
-function getOrCreateDeviceId() {
-  try {
-    let id = localStorage.getItem('tc_device_id');
-    if (!id) {
-      id = globalThis.crypto?.randomUUID
-        ? globalThis.crypto.randomUUID()
-        : ('dev-' + Date.now() + '-' + Math.random().toString(36).slice(2));
-      localStorage.setItem('tc_device_id', id);
-    }
-    return id;
-  } catch (error) {
-    console.error('Could not persist AI quota device ID:', error);
-    throw new Error('Не удалось сохранить идентификатор устройства для проверки бесплатного лимита.');
-  }
-}
-
-function getAIFreeUsage() {
-  return aiServerQuota || {
-    used: 0,
-    limit: AI_FREE_LIMIT_DEFAULT,
-    remaining: null,
-    policy: null,
-    server: false,
-    cached: false
-  };
-}
-
-function canUseFreeRequest() {
-  return aiServerQuota?.server === true &&
-    aiServerQuota.policy === AI_FREE_QUOTA_POLICY &&
-    aiServerQuota.remaining > 0;
-}
-
-function storeAIServerQuota(quota) {
-  if (!quota || quota.policy !== AI_FREE_QUOTA_POLICY ||
-      !Number.isFinite(Number(quota.remaining)) || !Number.isFinite(Number(quota.limit))) {
-    throw new Error('AI quota server returned an unsupported policy or malformed status.');
-  }
-  aiServerQuota = {
-    ...quota,
-    used: Math.max(0, Number(quota.used) || 0),
-    limit: AI_FREE_LIMIT_DEFAULT,
-    remaining: Math.max(0, Number(quota.remaining)),
-    server: true,
-    cached: false,
-    refreshedAt: Date.now()
-  };
-  try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(AI_FREE_QUOTA_CACHE_KEY, JSON.stringify(aiServerQuota));
-    }
-  } catch (error) {
-    console.warn('Could not cache AI quota status:', error);
-  }
-  return aiServerQuota;
-}
-
 const REALISM_RULE = `ВАЖНО про баланс: никогда не используй огромные числа вида +100500. Любой игровой эффект предмета — это либо +1..+5 к конкретной характеристике/навыку, либо 1-15% к какому-то бытовому параметру (сон, концентрация, иммунитет и т.п.). Формулируй эффект метафорично, но правдоподобно для реальной вещи.`;
 const NO_THINKING_RULE = `КРИТИЧНО: не показывай свои рассуждения, thinking process, план, анализ. Не пиши "Here's a thinking process", "Let me analyze", "1. Analyze" и т.п. Сразу выдавай ТОЛЬКО финальный JSON-объект, ничего до и после.`;
 const AI_WORLD_RULE = `Ты работаешь внутри The Creed of Life — RPG-системы реальной жизни. Реальные бытовые задачи, привычки, обучение, работа и крупные жизненные цели превращаются в игровой контент. Следуй выбранной пользователем атмосфере, не меняя реальные задачи и физические результаты.`;
@@ -213,97 +135,44 @@ let aiRequestInFlight = false;
 
 function usingProxy(){ return !!(PROXY_URL && PROXY_URL.trim()); }
 
-function aiKeyLooksValid(){
-  return usingProxy();
-  }
+function isAIProxyConfigured(){ return usingProxy(); }
 
 async function checkAIAvailability() {
-aiAvailable = aiKeyLooksValid();
-await refreshAIServerQuota();
-updateAIStatus();
-return aiAvailable;
-}
-
-async function refreshAIServerQuota() {
-  if (!usingProxy() || (typeof state !== 'undefined' && state?.settings?.aiMode === 'own_key' && (state?.settings?.aiOwnKey || '').trim())) return aiServerQuota;
-  try {
-    const response = await fetch(`${PROXY_URL.replace(/\/$/, '')}/quota`, {
-      method: 'GET',
-      headers: { 'X-Proxy-Secret': PROXY_SECRET, 'X-Device-Id': getOrCreateDeviceId() }
-    });
-    if (!response.ok) throw new Error(`Quota status unavailable (${response.status})`);
-    const quota = await response.json();
-    storeAIServerQuota(quota);
-  } catch (error) {
-    if (aiServerQuota) aiServerQuota = { ...aiServerQuota, server: false, cached: true };
-    console.warn('AI quota status could not be refreshed:', error);
-  }
-  return aiServerQuota;
+  aiAvailable = isAIProxyConfigured();
+  updateAIStatus();
+  return aiAvailable;
 }
 
 function updateAIStatus() {
   const el = document.getElementById('aiStatus');
   const settingsEl = document.getElementById('aiStatusSettings');
-  const usage = getAIFreeUsage();
-  const mode = (typeof state !== 'undefined' && state?.settings?.aiMode === 'own_key') ? 'own_key' : 'free';
-  const hasKey = !!(typeof state !== 'undefined' && (state?.settings?.aiOwnKey || '').trim());
-  const quotaVerified = usage.server === true && usage.policy === AI_FREE_QUOTA_POLICY;
+  const hasKey = typeof state !== 'undefined' && !!(state?.settings?.aiOwnKey || '').trim();
 
   let label;
-  if (!aiAvailable) {
-    label = '🤖 AI: не настроен';
-  } else if (mode === 'own_key' && hasKey) {
-    label = `🤖 AI: свой ключ · ${getAIModelLabel()}`;
-  } else if (usage.remaining === null) {
-    label = `🤖 AI: бесплатный лимит уточняется при подключении · ${getAIModelLabel()}`;
-  } else if (!quotaVerified) {
-    label = `🤖 AI: бесплатно ${usage.remaining}/${usage.limit} · последний статус · ${getAIModelLabel()}`;
+  if (!usingProxy()) {
+    label = '🤖 AI: прокси не настроен';
+  } else if (!hasKey) {
+    label = '🤖 AI: добавьте личный API-ключ в настройках';
   } else {
-    label = `🤖 AI: бесплатно ${usage.remaining}/${usage.limit} · ${getAIModelLabel()}`;
+    label = `🤖 AI: личный ключ · ${getAIModelLabel()}`;
   }
 
-  if (el) { el.textContent = label; el.className = 'ai-status ' + (aiAvailable ? 'online' : 'offline'); }
+  if (el) { el.textContent = label; el.className = 'ai-status ' + (aiAvailable && hasKey ? 'online' : 'offline'); }
   if (settingsEl) settingsEl.textContent = label;
 
-  const freeLeftEl = document.getElementById('aiFreeLeft');
-  if (freeLeftEl) {
-    freeLeftEl.textContent = (mode === 'own_key' && hasKey)
-      ? 'Режим: свой ключ (лимит не расходуется)'
-      : usage.remaining === null
-        ? 'Бесплатный лимит: 10 успешных запросов за скользящие 24 часа · статус уточняется при подключении'
-        : !quotaVerified
-          ? `Последний серверный статус: осталось ${usage.remaining} из ${usage.limit}; обновится при подключении`
-          : `Осталось бесплатных запросов: ${usage.remaining} из ${usage.limit} (скользящие 24 ч)`;
+  const billingInfoEl = document.getElementById('aiBillingInfo');
+  if (billingInfoEl) {
+    billingInfoEl.textContent = hasKey
+      ? 'AI-запросы будут оплачиваться по тарифу вашего API-ключа.'
+      : 'Для AI нужен личный API-ключ. Добавьте его ниже.';
   }
 }
 
 async function queryAI(prompt, systemPrompt = '', options = {}) {
-  if (!usingProxy()) {
-    throw new Error('PROXY_URL не настроен — AI-функции недоступны. Укажи адрес прокси-Worker\'а в константе PROXY_URL.');
-  }
-  if (aiRequestInFlight) {
-    throw new Error('AI уже обрабатывает другой запрос. Дождись его завершения.');
-  }
-
   const settings = (typeof state !== 'undefined' && state?.settings) ? state.settings : {};
-  const mode = settings.aiMode === 'own_key' ? 'own_key' : 'free';
   const ownKey = (settings.aiOwnKey || '').trim();
-  const useOwnKey = mode === 'own_key' && !!ownKey;
-
-  if (!useOwnKey) {
-    const quota = await refreshAIServerQuota();
-    if (!quota || quota.server !== true || quota.policy !== AI_FREE_QUOTA_POLICY) {
-      throw new Error('Не удалось подтвердить бесплатный лимит на сервере. Подключись к сети и проверь, что AI Worker обновлён.');
-    }
-    if (quota.remaining <= 0) {
-      const err = new Error(
-        'Бесплатный лимит AI (10 успешных запросов за скользящие 24 часа) исчерпан.\n' +
-        'Вставь свой API-ключ в настройках или дождись освобождения запроса.'
-      );
-      err.code = 'FREE_LIMIT_EXCEEDED';
-      throw err;
-    }
-  }
+  if (!ownKey) throw new Error('Для AI нужен личный API-ключ. Добавьте его в настройках AI.');
+  if (!usingProxy()) throw new Error('AI-прокси не настроен.');
   if (aiRequestInFlight) {
     throw new Error('AI уже обрабатывает другой запрос. Дождись его завершения.');
   }
@@ -323,10 +192,8 @@ async function queryAI(prompt, systemPrompt = '', options = {}) {
 
   const headers = {
     'Content-Type': 'application/json',
-    'X-Proxy-Secret': PROXY_SECRET,
     'X-Client-Version': '3.7.5'
   };
-  if (!useOwnKey) headers['X-Device-Id'] = getOrCreateDeviceId();
 
   const body = {
     provider: 'tooken',
@@ -336,11 +203,9 @@ async function queryAI(prompt, systemPrompt = '', options = {}) {
     temperature,
     top_p: topP
   };
-  if (useOwnKey) body.userApiKey = ownKey;
+  body.userApiKey = ownKey;
 
   aiRequestInFlight = true;
-  let quotaReservation = null;
-  let quotaReservationHandled = false;
   try {
     if (aiCancelRequested) throw cancelledError();
 
@@ -363,26 +228,12 @@ async function queryAI(prompt, systemPrompt = '', options = {}) {
       aiActiveController = null;
     }
 
-    if (!useOwnKey) quotaReservation = response.headers?.get?.('X-Quota-Reservation') || null;
     if (aiCancelRequested) throw cancelledError();
 
     if (response.status === 429) {
       let quotaError = {};
       try { quotaError = await response.json(); } catch {}
-      if (quotaError.code === 'FREE_LIMIT_EXCEEDED') {
-        storeAIServerQuota({ ...quotaError, policy: AI_FREE_QUOTA_POLICY });
-        updateAIStatus();
-      } else if (!useOwnKey) {
-        await refreshAIServerQuota();
-        updateAIStatus();
-      }
-      const err = new Error(
-        quotaError.code === 'FREE_LIMIT_EXCEEDED'
-          ? (quotaError.error || 'Бесплатный лимит AI исчерпан.')
-          : useOwnKey
-          ? 'Лимит провайдера или временное ограничение. Попробуй позже.'
-          : 'Лимит AI-запросов исчерпан. Вставь свой ключ в настройках или подожди.'
-      );
+      const err = new Error(quotaError.error || 'Провайдер временно ограничил запросы. Попробуй позже.');
       err.code = quotaError.code || 'RATE_LIMIT';
       throw err;
     }
@@ -393,24 +244,10 @@ async function queryAI(prompt, systemPrompt = '', options = {}) {
         const errBody = await response.json();
         detail = errBody.error?.message || errBody.error || errBody.message || detail;
       } catch {}
-      if (response.status === 403) {
-        throw new Error('Worker отклонил запрос (403): проверь PROXY_SECRET.');
-      }
       if (response.status === 401) {
-        throw new Error(
-          useOwnKey
-            ? 'Невалидный API-ключ. Проверь ключ в настройках.'
-            : 'AI-провайдер отклонил ключ (401) — проверь API key на Deno.'
-        );
+        throw new Error('Невалидный API-ключ. Проверь ключ в настройках.');
       }
       throw new Error(`Ошибка AI (${response.status}): ${detail}. Запрос не повторялся.`);
-    }
-
-    if (!useOwnKey && response.headers?.get?.('X-Quota-Policy') !== AI_FREE_QUOTA_POLICY) {
-      throw new Error('AI Worker использует неподдерживаемую политику лимита. Обнови Worker и повтори запрос.');
-    }
-    if (!useOwnKey && !quotaReservation) {
-      throw new Error('AI Worker не зарезервировал квоту. Бесплатный запрос не может быть подтверждён.');
     }
 
     const data = await response.json();
@@ -422,36 +259,10 @@ async function queryAI(prompt, systemPrompt = '', options = {}) {
     } catch (parseErr) {
       throw new Error(`${parseErr.message} Запрос не повторялся, чтобы не расходовать лимит.`);
     }
-    if (!useOwnKey) {
-      await settleAIQuota(quotaReservation, true);
-      quotaReservationHandled = true;
-      await refreshAIServerQuota();
-      updateAIStatus();
-    }
     return parsed;
   } finally {
-    if (!useOwnKey && quotaReservation && !quotaReservationHandled) {
-      await settleAIQuota(quotaReservation, false);
-      quotaReservationHandled = true;
-    }
     aiRequestInFlight = false;
     aiActiveController = null;
-  }
-}
-
-async function settleAIQuota(reservation, commit) {
-  if (!reservation) return null;
-  try {
-    const response = await fetch(`${PROXY_URL.replace(/\/$/, '')}/quota/settle`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Proxy-Secret': PROXY_SECRET, 'X-Device-Id': getOrCreateDeviceId() },
-      body: JSON.stringify({ reservation, commit })
-    });
-    if (!response.ok) throw new Error(`Quota settlement unavailable (${response.status})`);
-    return storeAIServerQuota(await response.json());
-  } catch (error) {
-    console.warn('AI quota settlement will rely on the server reservation:', error);
-    return null;
   }
 }
 
@@ -694,7 +505,7 @@ function normalizeCraftRecipes(recipes, materials) {
     const validRarities = new Set(RARITY_ORDER);
     const equipmentCategoryToSlot = {
         'Шлем':'Голова','Головной убор':'Голова','Броня':'Тело','Доспех':'Тело',
-        'Плащ':'Тело верхняя','Перчатки':'Перчатки','Поножи':'Ноги',
+        'Плащ':'Верхняя одежда','Перчатки':'Перчатки','Поножи':'Ноги',
         'Сапоги':'Ступни','Обувь':'Обувь','Рюкзак':'Рюкзак',
         'Кольцо':'Пальцы','Амулет':'Шея','Талисман':'Шея',
         'Наруч':'Запястье (левое)','Браслет':'Запястье (левое)','Гаджет':'Гаджет'
@@ -778,7 +589,7 @@ function normalizeCraftRecipes(recipes, materials) {
 }
 
 async function generateCraftRecipesWithAI(materials) {
-const systemPrompt = `${NO_THINKING_RULE}\n${AI_WORLD_RULE}\n${AI_DESIGN_RULE}\n${AI_REALISM_RULE}\n${AI_EFFECT_RULE}\n${AI_NO_NOTE_RULE}\nТы — генератор рецептов крафта The Creed of Life. РОВНО ОДИН рецепт. Используй ТОЛЬКО материалы из списка игрока и сохраняй их точные названия. 2-3 разных материала, qty 1-5 каждого, суммарно 2-10. Не используй бренды. Не зацикливайся на контейнерах, держателях, органайзерах и чехлах. Результат должен быть физически связан с материалами. type только equipment или consumable. Не возвращай power. quote запрещён. Для equipment: category ТОЛЬКО из: Шлем, Головной убор, Броня, Доспех, Плащ, Перчатки, Поножи, Сапоги, Обувь, Рюкзак, Кольцо, Амулет, Талисман, Наруч, Браслет, Гаджет. slot должен соответствовать category: Шлем/Головной убор→Голова; Броня/Доспех→Тело; Плащ→Тело верхняя; Перчатки→Перчатки; Поножи→Ноги; Сапоги→Ступни; Обувь→Обувь; Рюкзак→Рюкзак; Кольцо→Пальцы; Амулет/Талисман→Шея; Наруч/Браслет→Запястье (левое); Гаджет→Гаджет. condition только broken/damaged/worn/good/reliable/excellent/perfect, itemLevel ${Number(state.character?.level) || 1}. Для consumable: category ТОЛЬКО из: Еда, Напиток, Эликсир, Зелье, Настой, Свиток, Талисман, Боевая смесь, Ремкомплект, Средство ухода, Набор; durationMinutes 15-1440.\nJSON-массив: [{"name":"название с эмодзи","type":"equipment","category":"Перчатки","materials":[{"name":"точный материал 1","qty":2},{"name":"точный материал 2","qty":1}],"slot":"Перчатки","rarity":"common","itemLevel":${Number(state.character?.level) || 1},"condition":"good","effect":"+1 к 🛠️ Ручной труд","modifiers":{"skillFlat":{"🛠️ Ручной труд":1}},"desc":"подробное описание предмета и назначения"}]\nВерни только JSON-массив.`;
+const systemPrompt = `${NO_THINKING_RULE}\n${AI_WORLD_RULE}\n${AI_DESIGN_RULE}\n${AI_REALISM_RULE}\n${AI_EFFECT_RULE}\n${AI_NO_NOTE_RULE}\nТы — генератор рецептов крафта The Creed of Life. РОВНО ОДИН рецепт. Используй ТОЛЬКО материалы из списка игрока и сохраняй их точные названия. 2-3 разных материала, qty 1-5 каждого, суммарно 2-10. Не используй бренды. Не зацикливайся на контейнерах, держателях, органайзерах и чехлах. Результат должен быть физически связан с материалами. type только equipment или consumable. Не возвращай power. quote запрещён. Для equipment: category ТОЛЬКО из: Шлем, Головной убор, Броня, Доспех, Плащ, Перчатки, Поножи, Сапоги, Обувь, Рюкзак, Кольцо, Амулет, Талисман, Наруч, Браслет, Гаджет. slot должен соответствовать category: Шлем/Головной убор→Голова; Броня/Доспех→Тело; Плащ→Верхняя одежда; Перчатки→Перчатки; Поножи→Ноги; Сапоги→Ступни; Обувь→Обувь; Рюкзак→Рюкзак; Кольцо→Пальцы; Амулет/Талисман→Шея; Наруч/Браслет→Запястье (левое); Гаджет→Гаджет. condition только broken/damaged/worn/good/reliable/excellent/perfect, itemLevel ${Number(state.character?.level) || 1}. Для consumable: category ТОЛЬКО из: Еда, Напиток, Эликсир, Зелье, Настой, Свиток, Талисман, Боевая смесь, Ремкомплект, Средство ухода, Набор; durationMinutes 15-1440.\nJSON-массив: [{"name":"название с эмодзи","type":"equipment","category":"Перчатки","materials":[{"name":"точный материал 1","qty":2},{"name":"точный материал 2","qty":1}],"slot":"Перчатки","rarity":"common","itemLevel":${Number(state.character?.level) || 1},"condition":"good","effect":"+1 к 🛠️ Ручной труд","modifiers":{"skillFlat":{"🛠️ Ручной труд":1}},"desc":"подробное описание предмета и назначения"}]\nВерни только JSON-массив.`;
 const materialsDesc = materials.map(m => `${m.name} (доступно ×${Math.max(0, Number(m.qty) || 1)})`).join(', ');
 const prompt = `Материалы игрока: ${materialsDesc}. Создай ОДИН рецепт, выбрав equipment или consumable. Рецепт должен иметь очевидную причинно-следственную связь между материалами и результатом.`;
 const result = await queryAI(prompt, systemPrompt);

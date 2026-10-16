@@ -11,6 +11,16 @@
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
   }
+
+  .enum-picker-row {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .enum-picker-chip {
+    flex-shrink: 0;
+  }
 }
 
 @media (max-width: 800px) {

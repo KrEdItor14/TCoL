@@ -155,28 +155,50 @@ function renderAccessorySlots(){
   wrap.querySelectorAll('[data-discardacc]').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); discardAccessory(btn.dataset.discardacc, Number(btn.dataset.idx)); }));
 }
 
+const FACE_ITEM_TERMS = ['очки', 'маск', 'визор', 'балаклав', 'щиток'];
+const FACE_ITEM_BLOCKED_TERMS = ['шлем', 'шапк', 'капюшон', 'наушник'];
+
+function isFaceItem(item){
+    const text = `${item?.name || ''} ${item?.desc || ''}`.toLowerCase();
+    return !FACE_ITEM_BLOCKED_TERMS.some(term => text.includes(term)) &&
+        FACE_ITEM_TERMS.some(term => text.includes(term));
+}
+
 async function generateEquipmentWithAI(theme, slotHint){
 const level = Math.max(1, Number(state.character?.level) || 1);
-const systemPrompt = `${NO_THINKING_RULE}\n${AI_WORLD_RULE}\n${AI_DESIGN_RULE}\n${AI_REALISM_RULE}\n${AI_EFFECT_RULE}\n${AI_NO_NOTE_RULE}\nТы — генератор экипировки TCoL. Предмет должен быть физически представимым и пригодным для реальной жизни, но оформленным как RPG-экипировка. Слоты: ${ALL_SLOTS.join(', ')}. Редкости: common/uncommon/rare/epic/legendary/unique/mythical. Состояния: broken/damaged/worn/good/reliable/excellent/perfect. itemLevel ОБЯЗАТЕЛЬНО ${level}. Не указывай power: Мощь рассчитывает игра. quote запрещён.\nJSON: {"name":"название с эмодзи","desc":"описание, назначение и атмосфера","rarity":"rare","condition":"good","itemLevel":${level},"effect":"реалистичный эффект","slot":"Голова"}\nВерни только JSON.`;
-const prompt = `Придумай один предмет снаряжения на тему: "${theme || 'что-нибудь полезное на каждый день'}".` + (slotHint ? ` Слот уже выбран: "${slotHint}".` : ' Выбери логичный слот сам.');
-const result = await queryAI(prompt, systemPrompt);
-if (result && typeof result === 'object') delete result.quote;
+const slotConstraints = slotHint === 'Лицо'
+    ? '\nДля слота "Лицо": ТОЛЬКО очки, солнцезащитные очки, маски, визоры, балаклавы, защитные щитки. ЗАПРЕЩЕНО: шапки, капюшоны, шлемы, наушники — они для "Голова".'
+    : '';
+const systemPrompt = `${NO_THINKING_RULE}\n${AI_WORLD_RULE}\n${AI_DESIGN_RULE}\n${AI_REALISM_RULE}\n${AI_EFFECT_RULE}\n${AI_NO_NOTE_RULE}\nТы — генератор экипировки TCoL. Предмет должен быть физически представимым и пригодным для реальной жизни, но оформленным как RPG-экипировка. Слоты: ${ALL_SLOTS.join(', ')}. Редкости: common/uncommon/rare/epic/legendary/unique/mythical. Состояния: broken/damaged/worn/good/reliable/excellent/perfect. itemLevel ОБЯЗАТЕЛЬНО ${level}. Не указывай power: Мощь рассчитывает игра. quote запрещён.${slotConstraints}\nJSON: {"name":"название с эмодзи","desc":"описание, назначение и атмосфера","rarity":"rare","condition":"good","itemLevel":${level},"effect":"реалистичный эффект","slot":"${slotHint || 'Голова'}"}\nВерни только JSON.`;
+const prompt = `Придумай один предмет снаряжения на тему: "${theme || 'что-нибудь полезное на каждый день'}".` + (slotHint ? ` Слот уже выбран и НЕ ДОЛЖЕН меняться: "${slotHint}".` : ' Выбери логичный слот сам.');
+let result = await queryAI(prompt, systemPrompt);
+if (slotHint === 'Лицо' && !isFaceItem(result)) {
+    result = await queryAI(`${prompt} Предыдущий вариант не подходит для лица. Верни только очки, маску, визор, балаклаву или защитный щиток.`, systemPrompt);
+    if (!isFaceItem(result)) throw new Error('AI не смог создать подходящий предмет для слота «Лицо»');
+}
+if (result && typeof result === 'object') {
+    delete result.quote;
+    if (slotHint && result.slot !== slotHint) result.slot = slotHint;
+    const normalized = SLOT_MAP_OLD_TO_NEW[result.slot];
+    if (normalized && normalized !== result.slot) result.slot = normalized;
+    if (!result.rarity) result.rarity = 'common';
+    if (!result.condition) result.condition = 'good';
+    if (!result.itemLevel) result.itemLevel = level;
+    if (!result.name) result.name = 'Предмет';
+    if (!result.desc) result.desc = '';
+    if (!result.effect) result.effect = '';
+}
 return result;
 }
 
 function clearGearForm(){
 const nameEl = document.getElementById('gearNewName');
 const descEl = document.getElementById('gearNewDesc');
-const rarityEl = document.getElementById('gearNewRarity');
-const condEl = document.getElementById('gearNewCondition');
 const effectEl = document.getElementById('gearNewEffect');
-const slotEl = document.getElementById('gearNewSlot');
 if (nameEl) nameEl.value = '';
 if (descEl) descEl.value = '';
-if (rarityEl) rarityEl.value = 'common';
-if (condEl) condEl.value = 'good';
 if (effectEl) effectEl.value = '';
-if (slotEl) slotEl.value = EQUIP_SLOTS[0];
+if (typeof resetGearFormPickers === 'function') resetGearFormPickers();
 }
 
 let pendingAIGearPower = null;

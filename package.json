@@ -15,8 +15,9 @@
     "test:capacitor": "node tests/capacitor-bridge.test.js",
     "test:mobile": "node tests/mobile-ux.test.js",
     "test:offline": "node tests/offline-readiness.test.js",
-    "test:ai-quota": "node tests/ai-free-limit.test.js && node tests/ai-flow.test.js && node tests/ai-worker-quota.test.js",
-    "test:all": "node tests/storage-reliability.test.js && node tests/capacitor-bridge.test.js && node tests/mobile-ux.test.js && node tests/offline-readiness.test.js && npm run test:ai-quota",
+    "test:ui": "node tests/html-structure.test.js && node tests/enum-picker.test.js && node tests/settings-ui.test.js",
+    "test:ai": "node tests/ai-flow.test.js && node tests/ai-worker.test.js && node tests/ai-equipment-slots.test.js",
+    "test:all": "node tests/storage-reliability.test.js && node tests/capacitor-bridge.test.js && node tests/mobile-ux.test.js && node tests/offline-readiness.test.js && npm run test:ui && npm run test:ai",
     "cap:build:unix": "npm run prepare:web && npx cap sync android && cd android && ./gradlew assembleDebug",
     "generate:assets": "npx capacitor-assets generate --android",
     "cap:assets": "npm run generate:assets && npx cap sync android"

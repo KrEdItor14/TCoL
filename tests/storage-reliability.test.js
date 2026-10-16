@@ -27,6 +27,28 @@ const context = {
   STORAGE_KEY: "tcol-save",
   QUEST_COMPLETED_MAX: 200,
   RAID_MAX_MINUTES: 1440,
+  SLOT_MAP_OLD_TO_NEW: {
+    "Голова": "Голова",
+    "Лицо": "Лицо",
+    "Торс": "Тело",
+    "Туловище": "Тело",
+    "Тело": "Тело",
+    "Тело верхняя": "Верхняя одежда",
+    "Верхняя одежда": "Верхняя одежда",
+    "Перчатки": "Перчатки",
+    "Ноги": "Ноги",
+    "Ступни": "Ступни",
+    "Обувь": "Обувь",
+    "Рюкзак": "Рюкзак"
+  },
+  ACCESSORY_SLOTS: ["Запястье (левое)", "Запястье (правое)", "Пальцы", "Шея", "Гаджет"],
+  EQUIPMENT_POWER_BY_RARITY: { common: 5 },
+  EQUIPMENT_CONDITION_MULTIPLIER: { good: 1 },
+  EQUIPMENT_CONDITION_ALIASES: { good: "good" },
+  RARITY_ORDER: ["common"],
+  isAccessorySlot: slot => ["Запястье (левое)", "Запястье (правое)", "Пальцы", "Шея", "Гаджет"].includes(slot),
+  normalizeConsumableDuration: value => Number(value) || 30,
+  rollConsumableRarity: () => "common",
   APP_VERSION: "3.6.0",
   AI_THEME_OPTIONS: {
     real_world: "Реальный мир",
@@ -74,7 +96,14 @@ const QuestCore = context.__QuestCore;
 
 (async () => {
   const base = context.defaultState();
-  base.settings = { aiTheme:"dark_fantasy", aiModel:"glm-5.3-flash" };
+  base.settings = {
+    aiTheme:"dark_fantasy",
+    aiModel:"glm-5.3-flash",
+    aiMode:"free",
+    aiFreeUsed:4,
+    aiFreeWindowStart:Date.now(),
+    aiDailyFreeLimit:10
+  };
   base.quests.completed = Array.from({length: 350}, (_, i) => ({id:i}));
   base.journal = Array.from({length: 700}, (_, i) => ({ts: Date.now() - i * 1000, text:"x"}));
   base.coinLog = Array.from({length: 100}, (_, i) => ({delta:i}));
@@ -89,6 +118,8 @@ const QuestCore = context.__QuestCore;
   const restoredSettings = context.migrateSavePayload(envelope).settings;
   assert.strictEqual(restoredSettings.aiTheme, "fantasy");
   assert.strictEqual(restoredSettings.aiModel, "glm-5.3-flash");
+  assert.strictEqual(Object.hasOwn(restoredSettings, "aiMode"), false);
+  assert.strictEqual(Object.hasOwn(restoredSettings, "aiFreeUsed"), false);
 
   const tampered = JSON.parse(JSON.stringify(envelope));
   tampered.state.character.level = 99;
@@ -141,6 +172,70 @@ const QuestCore = context.__QuestCore;
     [roundTrip.quests.active[0].id, roundTrip.quests.active[1].id],
     [21, 20]
   );
+
+  const legacySlotState = context.defaultState();
+  legacySlotState.equipment = {
+    "Тело верхняя": {
+      name: "Старый плащ",
+      desc: "Наследный предмет",
+      rarity: "common",
+      condition: "good",
+      effect: "+1 к защите"
+    }
+  };
+  legacySlotState.inventory = [{
+    id: "legacy-coat",
+    type: "equipment",
+    name: "Запасной плащ",
+    desc: "Для дождя",
+    rarity: "common",
+    condition: "good",
+    effect: "+1 к комфорту",
+    slot: "Тело верхняя",
+    qty: 2
+  }];
+  context.migrateState(legacySlotState, { legacyAchievements:false });
+  assert.strictEqual(legacySlotState.equipment["Верхняя одежда"].name, "Старый плащ");
+  assert.strictEqual(legacySlotState.equipment["Верхняя одежда"].slot, "Верхняя одежда");
+  assert.strictEqual(Object.hasOwn(legacySlotState.equipment, "Тело верхняя"), false);
+  assert.deepStrictEqual(legacySlotState.inventory.find(item => item.id === "legacy-coat"), {
+    id: "legacy-coat",
+    type: "equipment",
+    name: "Запасной плащ",
+    desc: "Для дождя",
+    rarity: "common",
+    condition: "good",
+    effect: "+1 к комфорту",
+    slot: "Верхняя одежда",
+    qty: 2,
+    itemLevel: 1,
+    power: 5
+  });
+
+  const conflictSlotState = context.defaultState();
+  conflictSlotState.equipment = {
+    "Верхняя одежда": { name:"Каноническая куртка", rarity:"common", condition:"good", effect:"", slot:"Верхняя одежда" },
+    "Тело верхняя": { name:"Старый плащ", rarity:"common", condition:"good", effect:"", slot:"Тело верхняя" }
+  };
+  context.migrateState(conflictSlotState, { legacyAchievements:false });
+  assert.strictEqual(conflictSlotState.equipment["Верхняя одежда"].name, "Каноническая куртка");
+  assert.strictEqual(conflictSlotState.inventory.filter(item => item.name === "Старый плащ").length, 1);
+  assert.strictEqual(conflictSlotState.inventory.find(item => item.name === "Старый плащ").slot, "Верхняя одежда");
+  context.migrateState(conflictSlotState, { legacyAchievements:false });
+  assert.strictEqual(conflictSlotState.equipment["Верхняя одежда"].name, "Каноническая куртка");
+  assert.strictEqual(conflictSlotState.inventory.filter(item => item.name === "Старый плащ").length, 1,
+    "repeated slot migration must not duplicate the legacy item");
+  assert.strictEqual(Object.hasOwn(conflictSlotState.equipment, "Тело верхняя"), false,
+    "repeated slot migration must not restore the legacy slot");
+
+  const legacyEnvelopeState = context.defaultState();
+  legacyEnvelopeState.equipment = {
+    "Тело верхняя": { name:"Плащ из v2", rarity:"common", condition:"good", effect:"" }
+  };
+  const legacyEnvelope = context.createSaveEnvelope(legacyEnvelopeState);
+  const migratedEnvelope = context.migrateSavePayload(legacyEnvelope);
+  assert.strictEqual(migratedEnvelope.equipment["Верхняя одежда"].name, "Плащ из v2");
+  assert.strictEqual(Object.hasOwn(migratedEnvelope.equipment, "Тело верхняя"), false);
 
   console.log("storage-reliability: PASS");
 })().catch(err => { console.error(err); process.exitCode = 1; });

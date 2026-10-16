@@ -37,7 +37,7 @@ persist(); renderSettings();
 }));
 }
 
-// --- AI hybrid UI ---
+// --- AI settings ---
 const themeSelect = document.getElementById('aiThemeSelect');
 const themePickLabel = document.getElementById('aiThemePickLabel');
 const themeDescription = document.getElementById('aiThemeDescription');
@@ -45,12 +45,6 @@ const theme = typeof getAITheme === 'function' ? getAITheme() : (state.settings.
 if (themeSelect) themeSelect.value = theme;
 if (themePickLabel) themePickLabel.textContent = AI_THEME_OPTIONS[theme] || AI_THEME_OPTIONS.real_world;
 if (themeDescription) themeDescription.textContent = AI_THEME_DESCRIPTIONS[theme] || AI_THEME_DESCRIPTIONS.real_world;
-const modeSelect = document.getElementById('aiModeSelect');
-if (modeSelect) {
-  modeSelect.value = state.settings?.aiMode === 'own_key' ? 'own_key' : 'free';
-}
-const modePickLabel = document.getElementById('aiModePickLabel');
-if (modePickLabel) modePickLabel.textContent = modeSelect?.value === 'own_key' ? 'Свой ключ' : 'Бесплатный (10 / 24 ч)';
 const modelSelect = document.getElementById('aiModelSelect');
 if (modelSelect) modelSelect.value = typeof getAIModel === 'function' ? getAIModel() : 'deepseek-v4-flash';
 const modelPickLabel = document.getElementById('aiModelPickLabel');
@@ -60,9 +54,7 @@ if (modelDescription) modelDescription.textContent = AI_MODEL_DESCRIPTIONS[model
 const modelCostHint = document.getElementById('aiModelCostHint');
 if (modelCostHint) modelCostHint.textContent = `Стоимость: ${AI_MODEL_COSTS[modelSelect?.value] || AI_MODEL_COSTS['deepseek-v4-flash']} от базовой стоимости токенов.`;
 const ownKeyBlock = document.getElementById('aiOwnKeyBlock');
-if (ownKeyBlock) {
-  ownKeyBlock.style.display = (state.settings?.aiMode === 'own_key') ? 'block' : 'none';
-}
+if (ownKeyBlock) ownKeyBlock.style.display = 'block';
 const keyInput = document.getElementById('aiOwnKeyInput');
 if (keyInput) {
   if (state.settings?.aiOwnKey) {
@@ -198,32 +190,6 @@ function wireSettings(){
           toast(on ? '🔔 Уведомления включены' : '🔕 Уведомления выключены');
         }
         renderSettings();
-      });
-    }
-
-    // --- AI Mode ---
-    const modeSelect = document.getElementById('aiModeSelect');
-    if (modeSelect && !modeSelect.dataset.wired) {
-      modeSelect.dataset.wired = '1';
-      modeSelect.value = state.settings?.aiMode === 'own_key' ? 'own_key' : 'free';
-      modeSelect.addEventListener('change', () => {
-        const result = SettingsCore.setAIMode(modeSelect.value);
-        if (!result.ok) return;
-        persist();
-        renderSettings();
-        if (typeof updateAIStatus === 'function') updateAIStatus();
-        const modePickLabel = document.getElementById('aiModePickLabel');
-        if (modePickLabel) modePickLabel.textContent = modeSelect.value === 'own_key' ? 'Свой ключ' : 'Бесплатный (10 / 24 ч)';
-        toast(modeSelect.value === 'own_key' ? '🔑 Режим: свой ключ' : '🎁 Режим: бесплатный лимит');
-      });
-    }
-    const modePickBtn = document.getElementById('aiModePickBtn');
-    if (modePickBtn && !modePickBtn.dataset.wired) {
-      modePickBtn.dataset.wired = '1';
-      modePickBtn.addEventListener('click', () => {
-        if (!modeSelect) return;
-        modeSelect.value = modeSelect.value === 'own_key' ? 'free' : 'own_key';
-        modeSelect.dispatchEvent(new Event('change'));
       });
     }
 

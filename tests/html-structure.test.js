@@ -67,8 +67,9 @@ for (const relativeFile of htmlFiles) {
     'aiThemePickBtn',
     'aiThemeSelect',
     'aiThemeDescription',
-    'aiModePickBtn',
-    'aiModeSelect',
+    'aiBillingInfo',
+    'aiOwnKeyBlock',
+    'aiOwnKeyInput',
     'aiModelPickBtn',
     'aiModelSelect',
     'aiModelDescription',
@@ -90,9 +91,9 @@ for (const relativeFile of htmlFiles) {
     fail(relativeFile, 'AI status and settings description must share the same card');
   }
   const tookenMentions = [...html.matchAll(/Tooken/g)];
-  const accessModeCopy = 'токены списываются с баланса вашего ключа Tooken';
-  if (tookenMentions.length !== 1 || !html.includes(accessModeCopy)) {
-    fail(relativeFile, 'Tooken should only be mentioned in the access-mode description');
+  const personalKeyCopy = 'AI-генерации используют ваш личный ключ Tooken.';
+  if (tookenMentions.length !== 1 || !html.includes(personalKeyCopy)) {
+    fail(relativeFile, 'AI settings must explain that a personal Tooken key is required');
   }
 }
 

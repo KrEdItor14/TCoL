@@ -159,19 +159,12 @@
     </label>
     <div style="display:flex; gap:8px; flex-wrap:wrap;">
       <label class="field" style="flex:1; min-width:120px;">Тип
-        <select id="qNewType">
-          <option value="обычный">Обычный</option>
-          <option value="рейд">Рейд</option>
-        </select>
+        <input type="hidden" id="qNewType" value="обычный" />
+        <div id="qNewTypePicker"></div>
       </label>
       <label class="field" style="flex:1; min-width:120px;">Сложность
-        <select id="qNewDifficulty">
-          <option value="trivial">⚪ новичок</option>
-          <option value="easy">🟢 ученик</option>
-          <option value="normal" selected>🔵 адепт</option>
-          <option value="hard">🟣 эксперт</option>
-          <option value="epic">🟡 мастер</option>
-        </select>
+        <input type="hidden" id="qNewDifficulty" value="normal" />
+        <div id="qNewDifficultyPicker"></div>
       </label>
     </div>
     <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -266,15 +259,8 @@
         <input id="shopNewPrice" type="number" placeholder="100" />
       </label>
       <label class="field" style="flex:1; min-width:120px;">Редкость
-        <select id="shopNewRarity">
-          <option value="common">Обычная</option>
-          <option value="uncommon">Необычная</option>
-          <option value="rare">Редкая</option>
-          <option value="epic">Эпическая</option>
-          <option value="legendary">Легендарная</option>
-          <option value="unique">Уникальная</option>
-          <option value="mythical">Мифическая</option>
-        </select>
+        <input type="hidden" id="shopNewRarity" value="common" />
+        <div id="shopNewRarityPicker"></div>
       </label>
       <label class="field" style="flex:2; min-width:180px;">Бафф
         <input id="shopNewEffect" placeholder="Например: +5% к концентрации" />
@@ -334,49 +320,21 @@
     </label>
     <div style="display:flex; gap:8px;">
       <label class="field" style="flex:1">Редкость
-        <select id="gearNewRarity">
-          <option value="common">⚪ Обычная</option>
-          <option value="uncommon">🟢 Необычная</option>
-          <option value="rare">🔵 Редкая</option>
-          <option value="epic">🟣 Эпическая</option>
-          <option value="legendary">🟡 Легендарная</option>
-          <option value="unique">🟠 Уникальная</option>
-          <option value="mythical">🔴 Мифическая</option>
-        </select>
+        <input type="hidden" id="gearNewRarity" value="common" />
+        <div id="gearNewRarityPicker"></div>
       </label>
       <label class="field" style="flex:1">Состояние
-        <select id="gearNewCondition">
-          <option value="broken">Сломанное</option>
-          <option value="damaged">Повреждённое</option>
-          <option value="worn">Потрёпанное</option>
-          <option value="good" selected>Хорошее</option>
-          <option value="reliable">Надёжное</option>
-          <option value="excellent">Отличное</option>
-          <option value="perfect">Идеальное</option>
-        </select>
+        <input type="hidden" id="gearNewCondition" value="good" />
+        <div id="gearNewConditionPicker"></div>
       </label>
     </div>
     <label class="field">Эффект
       <input id="gearNewEffect" placeholder="напр. +2 к концентрации" />
     </label>
     <label class="field">Слот
-      <select id="gearNewSlot">
-        <optgroup label="Экипировка (по одному предмету)">
-          <option value="Голова">Голова</option>
-          <option value="Тело">Тело</option>
-          <option value="Тело верхняя">Тело верхняя</option>
-          <option value="Ноги">Ноги</option>
-          <option value="Ступни">Ступни</option>
-          <option value="Обувь">Обувь</option>
-        </optgroup>
-        <optgroup label="Аксессуары (можно несколько)">
-          <option value="Запястье (левое)">Запястье (левое)</option>
-          <option value="Запястье (правое)">Запястье (правое)</option>
-          <option value="Пальцы">Пальцы</option>
-          <option value="Шея">Шея</option>
-          <option value="Гаджет">Гаджет</option>
-        </optgroup>
-      </select>
+      <input type="hidden" id="gearNewSlot" value="Голова" />
+      <div id="gearNewSlotPicker"></div>
+    </label>
     </label>
     <div class="actions">
       <button class="btn primary" id="gearNewAdd">Добавить в инвентарь</button>
@@ -569,27 +527,14 @@
   </div>
 
   <div class="card">
-    <h3>🎁 Бесплатный лимит</h3>
-    <div class="sub" id="aiFreeLeft" style="font-weight:600;">Осталось бесплатных запросов: —</div>
-    <div class="sub" style="margin-top:8px;">В режиме «Бесплатный» доступно до 10 успешных генераций за скользящие 24 часа. Лимит проверяется сервером; неудачный ответ или ошибка разбора не расходуют запрос.</div>
+    <h3>🔐 Доступ к AI</h3>
+    <div class="sub" id="aiBillingInfo" style="font-weight:600;">Для AI нужен личный API-ключ.</div>
+    <div class="sub" style="margin-top:8px;">AI-генерации используют ваш личный ключ Tooken. Стоимость и лимиты определяются тарифом провайдера.</div>
   </div>
 
-  <div class="card">
-    <h3>🔀 Режим доступа</h3>
-    <button type="button" class="btn" id="aiModePickBtn" style="margin-top:6px; width:100%; text-align:left;">
-      <span id="aiModePickLabel">Бесплатный (10 / 24 ч)</span>
-    </button>
-    <!-- legacy for code that reads select -->
-    <select class="input" id="aiModeSelect" style="display:none;">
-      <option value="free">Бесплатный</option>
-      <option value="own_key">Свой ключ</option>
-    </select>
-    <div class="sub" style="margin-top:8px;">«Свой ключ» — без лимита приложения; токены списываются с баланса вашего ключа Tooken (личный или клиент перепродажи).</div>
-  </div>
-
-  <div id="aiOwnKeyBlock" class="card" style="display:none;">
+  <div id="aiOwnKeyBlock" class="card">
     <h3>🔑 API-ключ</h3>
-    <div class="sub">Хранится только на этом устройстве. Не публикуйте ключ.</div>
+    <div class="sub">Ключ хранится на этом устройстве и отправляется прокси только для запроса. Не публикуйте его.</div>
     <input class="input" id="aiOwnKeyInput" type="password" autocomplete="off"
            placeholder="tc_live_..." style="margin-top:8px; width:100%; box-sizing:border-box;">
     <div class="actions" style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
@@ -637,6 +582,8 @@
 </div>
 
 <script src="js/runtime.js" defer></script>
+<script src="js/enum-picker.js" defer></script>
+<script src="js/init-pickers.js" defer></script>
 <script src="js/mobile-ux.js" defer></script>
 <script src="js/capacitor-bridge.js" defer></script>
 </body>

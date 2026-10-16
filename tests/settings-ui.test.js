@@ -107,7 +107,6 @@ const themeValues = [
   ['sci_fi', 'Научная фантастика'],
   ['post_apocalyptic', 'Постапокалипсис']
 ];
-const modeValues = [['free', 'Бесплатный'], ['own_key', 'Свой ключ']];
 const modelValues = [
   ['deepseek-v4.1-flash', 'DeepSeek V4.1 Flash'],
   ['deepseek-v4-flash', 'DeepSeek V4 Pro'],
@@ -116,16 +115,15 @@ const modelValues = [
   ['gpt-6-astra', 'GPT-6 Astra']
 ];
 for (const id of [
-  'aiThemePickBtn', 'aiThemePickLabel', 'aiModePickBtn', 'aiModePickLabel',
+  'aiThemePickBtn', 'aiThemePickLabel',
   'aiModelPickBtn', 'aiModelPickLabel', 'aiOwnKeyBlock', 'aiOwnKeyInput',
-  'aiModelDescription', 'aiModelCostHint',
+  'aiBillingInfo', 'aiModelDescription', 'aiModelCostHint',
   'soundEnabledToggle', 'soundEnabledLabel', 'notificationsEnabledToggle',
   'notificationsEnabledLabel', 'aiStatusSettings',
   'aiOwnKeySaveBtn', 'aiOwnKeyClearBtn', 'aiProviderSelect'
 ]) elements.set(id, new FakeElement());
 elements.set('themeGrid', new FakeThemeGrid());
 elements.set('aiThemeSelect', new FakeSelect(themeValues));
-elements.set('aiModeSelect', new FakeSelect(modeValues));
 elements.set('aiModelSelect', new FakeSelect(modelValues));
 
 const state = {
@@ -134,8 +132,7 @@ const state = {
     soundEnabled: true,
     notificationsEnabled: true,
     aiTheme: 'real_world',
-    aiMode: 'free',
-    aiProvider: 'tooken',
+      aiProvider: 'tooken',
     aiModel: 'deepseek-v4-flash',
     aiOwnKey: null
   }
@@ -170,7 +167,6 @@ vm.createContext(context);
 for (const file of ['js/settings-core.js', 'js/ai.js', 'js/settings.js']) {
   vm.runInContext(fs.readFileSync(file, 'utf8'), context, { filename: file });
 }
-vm.runInContext('updateAIStatus = function() {};', context);
 
 async function run() {
   const modelOptions = vm.runInContext('AI_MODEL_OPTIONS', context);
@@ -202,11 +198,14 @@ async function run() {
   assert.strictEqual(elements.get('aiThemeSelect').value, 'sci_fi');
   assert.strictEqual(elements.get('aiThemePickLabel').textContent, 'Научная фантастика');
 
-  elements.get('aiModePickBtn').click();
-  assert.strictEqual(state.settings.aiMode, 'own_key');
-  assert.strictEqual(elements.get('aiModeSelect').value, 'own_key');
   assert.strictEqual(elements.get('aiOwnKeyBlock').style.display, 'block');
-  assert.strictEqual(savedSettings[savedSettings.length - 1].aiMode, 'own_key');
+  elements.get('aiOwnKeyInput').value = '  personal-key  ';
+  elements.get('aiOwnKeySaveBtn').click();
+  assert.strictEqual(state.settings.aiOwnKey, 'personal-key');
+  assert.strictEqual(elements.get('aiBillingInfo').textContent, 'AI-запросы будут оплачиваться по тарифу вашего API-ключа.');
+  assert.strictEqual(savedSettings[savedSettings.length - 1].aiOwnKey, 'personal-key');
+  elements.get('aiOwnKeyClearBtn').click();
+  assert.strictEqual(state.settings.aiOwnKey, null);
 
   elements.get('aiModelPickBtn').click();
   const modelPicker = context.document.body.children.at(-1);

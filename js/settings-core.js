@@ -47,12 +47,6 @@ const SettingsCore = (() => {
     return { ok:true, model };
   }
 
-  function setAIMode(mode) {
-    if (mode !== 'free' && mode !== 'own_key') return { ok:false, reason:'invalid_mode' };
-    ensure().aiMode = mode;
-    return { ok:true, mode };
-  }
-
   function setAIOwnKey(key) {
     const settings = ensure();
     const trimmed = (key == null ? '' : String(key)).trim();
@@ -65,34 +59,6 @@ const SettingsCore = (() => {
     return { ok:true };
   }
 
-  /** Сбрасывает окно при необходимости и возвращает актуальное состояние лимита (скользящие 24 ч) */
-  function getAIFreeUsage() {
-    const settings = ensure();
-    const now = Date.now();
-    const windowMs = 24 * 60 * 60 * 1000;
-    const limit = Number(settings.aiDailyFreeLimit) || 10;
-
-    if (!settings.aiFreeWindowStart || (now - Number(settings.aiFreeWindowStart)) >= windowMs) {
-      settings.aiFreeUsed = 0;
-      settings.aiFreeWindowStart = now;
-    }
-
-    const used = Math.max(0, Number(settings.aiFreeUsed) || 0);
-    return {
-      used,
-      limit,
-      remaining: Math.max(0, limit - used),
-      windowStart: settings.aiFreeWindowStart
-    };
-  }
-
-  function incrementAIFreeUsage() {
-    getAIFreeUsage(); // сбросит окно при необходимости
-    const settings = ensure();
-    settings.aiFreeUsed = Math.max(0, Number(settings.aiFreeUsed) || 0) + 1;
-    return getAIFreeUsage();
-  }
-
   return Object.freeze({
     setTheme,
     setSoundEnabled,
@@ -100,10 +66,7 @@ const SettingsCore = (() => {
     setAITheme,
     setAIProvider,
     setAIModel,
-    setAIMode,
     setAIOwnKey,
-    clearAIOwnKey,
-    getAIFreeUsage,
-    incrementAIFreeUsage
+    clearAIOwnKey
   });
 })();
